@@ -4,8 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="8dp"
-    android:background="@color/white"
-    android:elevation="2dp"
+    android:background="#2D2D2D"
+    android:elevation="4dp"
     android:padding="12dp">
 
     <ImageView
@@ -18,25 +18,13 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-<!--    <TextView-->
-<!--        android:id="@+id/tv_video_thumbnail_text"-->
-<!--        android:layout_width="wrap_content"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:text="Video thumbnail"-->
-<!--        android:textColor="@color/white"-->
-<!--        android:textSize="12sp"-->
-<!--        app:layout_constraintBottom_toBottomOf="@+id/iv_video_thumbnail"-->
-<!--        app:layout_constraintEnd_toEndOf="@+id/iv_video_thumbnail"-->
-<!--        app:layout_constraintStart_toStartOf="@+id/iv_video_thumbnail"-->
-<!--        app:layout_constraintTop_toTopOf="@+id/iv_video_thumbnail" />-->
-
     <TextView
         android:id="@+id/tv_video_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:text="Video title, related to the person or location"
-        android:textColor="@color/black"
+        android:textColor="#FFFFFF"
         android:textSize="16sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

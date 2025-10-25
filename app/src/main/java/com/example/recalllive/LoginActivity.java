@@ -30,7 +30,7 @@ public class LoginActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 100;
     private static final String PREFS_NAME = "RecallLivePrefs";
     Button loginToPatientSignUpBtn;
-    Boolean userType;
+    Boolean userType = null; // Initialize as null to catch unset state
     private FirebaseAuth firebaseAuth;
     private EditText editTextEmail, editTextPassword;
     private Button button;
@@ -86,12 +86,30 @@ public class LoginActivity extends AppCompatActivity {
         Log.d(TAG, "CHECKING USER TYPE FOR: " + userId);
         Log.d(TAG, "═══════════════════════════════════════════════");
 
+        // Check Patient first
         databaseReference.child("Patient").child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (snapshot.exists()) {
-                    Log.d(TAG, "✓ User found as PATIENT");
-                    userType = true;
+                Log.d(TAG, "📊 Patient check - snapshot.exists(): " + snapshot.exists());
+                Log.d(TAG, "📊 Patient check - has children: " + snapshot.hasChildren());
+
+                // Check if this is a REAL patient node (has email field) or just an empty/placeholder node
+                boolean hasEmail = snapshot.child("email").exists();
+                boolean hasAccountType = snapshot.child("accountType").exists() &&
+                        "patient".equals(snapshot.child("accountType").getValue(String.class));
+
+                Log.d(TAG, "📊 Patient node has email: " + hasEmail);
+                Log.d(TAG, "📊 Patient node accountType: " + snapshot.child("accountType").getValue());
+
+                if (snapshot.exists() && snapshot.hasChildren() && (hasEmail || hasAccountType)) {
+                    // DEBUG: Print ALL data in Patient node
+                    Log.d(TAG, "🔍 PATIENT NODE DATA:");
+                    for (DataSnapshot child : snapshot.getChildren()) {
+                        Log.d(TAG, "  - " + child.getKey() + " = " + child.getValue());
+                    }
+
+                    Log.d(TAG, "✓ User found as PATIENT (VALID DATA)");
+                    userType = true; // Set BEFORE calling any other methods
 
                     SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
                     prefs.edit()
@@ -99,16 +117,32 @@ public class LoginActivity extends AppCompatActivity {
                             .putString("patient_uid", userId)
                             .apply();
 
+                    Log.d(TAG, "✓ Saved to SharedPreferences: user_type=patient");
+
                     checkPatientClustersAndProceed(userId);
                 } else {
-                    Log.d(TAG, "Not found in Patient, checking Guardian");
+                    Log.d(TAG, "❌ Not found in Patient database (or node is empty/invalid)");
+                    Log.d(TAG, "🔍 Checking Guardian database...");
 
+                    // Check Guardian
                     databaseReference.child("Guardian").child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot snapshot) {
-                            if (snapshot.exists()) {
-                                Log.d(TAG, "✓ User found as GUARDIAN");
-                                userType = false;
+                            Log.d(TAG, "📊 Guardian check - snapshot.exists(): " + snapshot.exists());
+                            Log.d(TAG, "📊 Guardian check - has children: " + snapshot.hasChildren());
+
+                            boolean hasEmail = snapshot.child("email").exists();
+                            Log.d(TAG, "📊 Guardian node has email: " + hasEmail);
+
+                            if (snapshot.exists() && snapshot.hasChildren() && hasEmail) {
+                                // DEBUG: Print ALL data in Guardian node
+                                Log.d(TAG, "🔍 GUARDIAN NODE DATA:");
+                                for (DataSnapshot child : snapshot.getChildren()) {
+                                    Log.d(TAG, "  - " + child.getKey() + " = " + child.getValue());
+                                }
+
+                                Log.d(TAG, "✓ User found as GUARDIAN (VALID DATA)");
+                                userType = false; // Set BEFORE calling any other methods
 
                                 SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
                                 prefs.edit()
@@ -116,22 +150,33 @@ public class LoginActivity extends AppCompatActivity {
                                         .putString("guardian_uid", userId)
                                         .apply();
 
+                                Log.d(TAG, "✓ Saved to SharedPreferences: user_type=guardian");
+
+                                // Get linked patient UID
                                 String patientUid = snapshot.child("patient-uid").getValue(String.class);
+                                Log.d(TAG, "Guardian's linked patient UID: " + (patientUid != null ? patientUid : "NONE"));
+
                                 if (patientUid != null && !patientUid.isEmpty()) {
                                     prefs.edit().putString("linked_patient_uid", patientUid).apply();
+                                    Log.d(TAG, "✓ Saved linked_patient_uid to SharedPreferences: " + patientUid);
+                                } else {
+                                    Log.w(TAG, "⚠️ No linked patient for this guardian");
                                 }
 
+                                // Navigate to Guardian home
                                 navigateToHome();
                             } else {
-                                Log.d(TAG, "User not found in Guardian either");
-                                Toast.makeText(getApplicationContext(), "User type not found", Toast.LENGTH_LONG).show();
+                                Log.e(TAG, "❌ User not found in Guardian database either");
+                                Log.e(TAG, "❌❌❌ USER NOT FOUND IN EITHER DATABASE ❌❌❌");
+                                userType = null;
+                                Toast.makeText(getApplicationContext(), "User type not found in database", Toast.LENGTH_LONG).show();
                             }
                         }
 
                         @Override
                         public void onCancelled(@NonNull DatabaseError error) {
-                            Log.e(TAG, "Guardian check error: " + error.getMessage());
-                            Toast.makeText(getApplicationContext(), "Error: " + error.getMessage(), Toast.LENGTH_LONG).show();
+                            Log.e(TAG, "❌ Guardian check error: " + error.getMessage());
+                            Toast.makeText(getApplicationContext(), "Database error: " + error.getMessage(), Toast.LENGTH_LONG).show();
                         }
                     });
                 }
@@ -139,8 +184,8 @@ public class LoginActivity extends AppCompatActivity {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                Log.e(TAG, "Patient check error: " + error.getMessage());
-                Toast.makeText(getApplicationContext(), "Error: " + error.getMessage(), Toast.LENGTH_LONG).show();
+                Log.e(TAG, "❌ Patient check error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(), "Database error: " + error.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -317,15 +362,47 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void navigateToHome() {
-        Toast.makeText(getApplicationContext(), "Login successful", Toast.LENGTH_LONG).show();
+        // CRITICAL FIX: Check userType is actually set before navigating
+        if (userType == null) {
+            Log.e(TAG, "❌❌❌ CRITICAL ERROR: userType is NULL ❌❌❌");
+            Toast.makeText(getApplicationContext(),
+                    "Error: User type not determined. Please try logging in again.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // Read back SharedPreferences to verify what was saved
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String savedUserType = prefs.getString("user_type", "NOT SET");
+        String savedPatientUid = prefs.getString("patient_uid", "NOT SET");
+        String savedGuardianUid = prefs.getString("guardian_uid", "NOT SET");
+        String linkedPatientUid = prefs.getString("linked_patient_uid", "NOT SET");
+
+        Log.d(TAG, "═══════════════════════════════════════════════");
+        Log.d(TAG, "NAVIGATING TO HOME");
+        Log.d(TAG, "═══════════════════════════════════════════════");
+        Log.d(TAG, "userType boolean: " + (userType ? "TRUE (PATIENT)" : "FALSE (GUARDIAN)"));
+        Log.d(TAG, "SharedPrefs user_type: " + savedUserType);
+        Log.d(TAG, "SharedPrefs patient_uid: " + savedPatientUid);
+        Log.d(TAG, "SharedPrefs guardian_uid: " + savedGuardianUid);
+        Log.d(TAG, "SharedPrefs linked_patient_uid: " + linkedPatientUid);
+        Log.d(TAG, "═══════════════════════════════════════════════");
+
+        Toast.makeText(getApplicationContext(), "Login successful as " + (userType ? "Patient" : "Guardian"), Toast.LENGTH_SHORT).show();
+
         Intent intent;
         if (userType) {
+            Log.d(TAG, "🚀 LAUNCHING: PatientMainActivity");
             intent = new Intent(getApplicationContext(), PatientMainActivity.class);
         } else {
+            Log.d(TAG, "🚀 LAUNCHING: GuardianMainActivity");
             intent = new Intent(getApplicationContext(), GuardianMainActivity.class);
         }
+
         startActivity(intent);
         finish();
+
+        Log.d(TAG, "✓ Navigation complete");
     }
 
     public void login(String email, String password) {
@@ -339,6 +416,10 @@ public class LoginActivity extends AppCompatActivity {
                             Log.d(TAG, "LOGIN SUCCESSFUL");
                             Log.d(TAG, "User ID: " + userId);
                             Log.d(TAG, "═══════════════════════════════════════════════");
+
+                            // Reset userType before checking
+                            userType = null;
+
                             setUserType(userId);
                         }
                         else {

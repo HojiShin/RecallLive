@@ -9,7 +9,8 @@
         android:layout_width="100dp"
         android:layout_height="100dp"
         app:cardCornerRadius="8dp"
-        app:cardElevation="2dp">
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="#2D2D2D">
 
         <ImageView
             android:id="@+id/imageViewThumbnail"
@@ -26,10 +27,10 @@
             android:layout_margin="4dp"
             android:background="@drawable/circle_background_red"
             android:src="@android:drawable/ic_delete"
-            android:tint="@android:color/white"
             android:contentDescription="Delete image"
             android:scaleType="centerInside"
-            android:padding="4dp" />
+            android:padding="4dp"
+            app:tint="@android:color/white" />
 
     </androidx.cardview.widget.CardView>
 

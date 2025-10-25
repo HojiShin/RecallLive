@@ -4,8 +4,9 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="8dp"
-    app:cardCornerRadius="8dp"
-    app:cardElevation="2dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="4dp"
+    app:cardBackgroundColor="#2D2D2D"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground">
@@ -30,7 +31,7 @@
                 android:layout_weight="1"
                 android:text="Video Title"
                 android:textSize="14sp"
-                android:textColor="@android:color/black"
+                android:textColor="#FFFFFF"
                 android:textStyle="bold"
                 android:ellipsize="end"
                 android:maxLines="1" />
@@ -41,7 +42,7 @@
                 android:layout_height="wrap_content"
                 android:text="Jan 1, 2025"
                 android:textSize="12sp"
-                android:textColor="@android:color/darker_gray"
+                android:textColor="#808080"
                 android:layout_marginStart="8dp" />
 
         </LinearLayout>
@@ -54,6 +55,7 @@
             android:text="😊 Happy"
             android:textSize="16sp"
             android:textStyle="bold"
+            android:textColor="#FFFFFF"
             android:layout_marginBottom="4dp" />
 
         <!-- Emotion Count -->
@@ -63,7 +65,7 @@
             android:layout_height="wrap_content"
             android:text="15 emotions detected"
             android:textSize="12sp"
-            android:textColor="@android:color/darker_gray"
+            android:textColor="#B0B0B0"
             android:layout_marginBottom="4dp" />
 
         <!-- Emotion Breakdown -->
@@ -71,9 +73,9 @@
             android:id="@+id/tv_emotion_breakdown"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="😊 10  😐 3  😲 2"
+            android:text="😊 10  😢 3  😲 2"
             android:textSize="14sp"
-            android:textColor="@android:color/black" />
+            android:textColor="#FFFFFF" />
 
     </LinearLayout>
 

@@ -5,23 +5,64 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="32dp"
-    android:background="@color/white"
+    android:background="#1E1E1E"
     tools:context=".LoginActivity">
 
+    <!-- App Title with Brain Icon -->
+<!--    <ImageView-->
+<!--        android:id="@+id/iv_app_logo"-->
+<!--        android:layout_width="50dp"-->
+<!--        android:layout_height="50dp"-->
+<!--        android:layout_marginTop="80dp"-->
+<!--        android:layout_marginEnd="12dp"-->
+<!--        android:src="@drawable/ic_brain"-->
+<!--        android:contentDescription="Brain Logo"-->
+<!--        app:layout_constraintEnd_toStartOf="@id/ll_app_title"-->
+<!--        app:layout_constraintTop_toTopOf="parent"-->
+        app:layout_constraintBottom_toBottomOf="@id/ll_app_title"
 
-    <!-- Login Title -->
-    <TextView
-        android:id="@+id/tv_login_title"
+    <!-- App Title Container -->
+    <LinearLayout
+        android:id="@+id/ll_app_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="80dp"
-        android:text="Login"
-        android:textColor="@color/black"
-        android:textSize="32sp"
-        android:textStyle="bold"
+        android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Recall"
+            android:textColor="#000000"
+            android:textSize="36sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.02" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Live"
+            android:textColor="#FF0000"
+            android:textSize="36sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.02" />
+    </LinearLayout>
+
+    <!-- Subtitle -->
+    <TextView
+        android:id="@+id/tv_login_subtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Sign in to continue"
+        android:textColor="#B0B0B0"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/ll_app_title" />
 
     <!-- Email/Phone Label -->
     <TextView
@@ -30,11 +71,12 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="60dp"
         android:text="Email/Phone number"
-        android:textColor="@color/black"
-        android:textSize="16sp"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_login_title" />
+        app:layout_constraintTop_toBottomOf="@id/tv_login_subtitle" />
 
     <!-- Email/Phone Input -->
     <EditText
@@ -42,10 +84,12 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:background="@drawable/edittext_background"
-        android:hint="Enter Email or number here"
+        android:background="#2A2A2A"
+        android:hint="Enter your email or phone"
+        android:textColorHint="#707070"
+        android:textColor="#FFFFFF"
         android:inputType="textEmailAddress"
-        android:padding="16dp"
+        android:padding="18dp"
         android:textSize="16sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -58,8 +102,9 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:text="Password"
-        android:textColor="@color/black"
-        android:textSize="16sp"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/et_email_phone" />
@@ -70,44 +115,46 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:background="@drawable/edittext_background"
-        android:hint="Enter password here"
+        android:background="#2A2A2A"
+        android:hint="Enter your password"
+        android:textColorHint="#707070"
+        android:textColor="#FFFFFF"
         android:inputType="textPassword"
-        android:padding="16dp"
+        android:padding="18dp"
         android:textSize="16sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_password_label" />
 
     <!-- Login Button -->
-
-    <!-- Sign Up Link -->
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btn_login"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="40dp"
         android:background="@drawable/button_background"
-        android:padding="16dp"
+        android:padding="18dp"
         android:text="Login"
-        android:textColor="@color/white"
+        android:textColor="#FFFFFF"
         android:textSize="18sp"
         android:textStyle="bold"
+        android:elevation="4dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/et_password" />
 
+    <!-- Sign Up Link -->
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btn_loginToSignUp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@color/white"
-        android:text="Don't have an account?"
-        android:textColor="@color/blue"
-        android:textSize="12sp"
+        android:layout_marginTop="16dp"
+        android:background="@android:color/transparent"
+        android:text="Don't have an account? Sign up"
+        android:textColor="#6C9EFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/btn_login" />
 

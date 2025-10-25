@@ -155,12 +155,16 @@ public class GuardianHomeFragment extends Fragment {
                         String videoUrl = doc.getString("videoUrl");
                         String locationName = doc.getString("locationName");
                         String timeDescription = doc.getString("timeDescription");
+                        Long photoCount = doc.getLong("photoCount");
                         com.google.firebase.Timestamp createdAt = doc.getTimestamp("createdAt");
 
                         VideoEmotionData videoData = new VideoEmotionData();
                         videoData.documentId = doc.getId();
                         videoData.videoUrl = videoUrl;
-                        videoData.title = locationName + " - " + timeDescription;
+                        videoData.locationName = locationName != null ? locationName : "Unknown Location";
+                        videoData.timeDescription = timeDescription != null ? timeDescription : "Unknown Time";
+                        videoData.title = videoData.locationName + " - " + videoData.timeDescription;
+                        videoData.photoCount = photoCount != null ? photoCount.intValue() : 0;
                         videoData.createdAt = createdAt != null ? createdAt.toDate().getTime() : 0;
 
                         videoEmotionList.add(videoData);
@@ -390,27 +394,66 @@ public class GuardianHomeFragment extends Fragment {
             explanation += "✓ Average " + String.format("%.1f", avgPerVideo) + " emotions per video\n";
         }
 
-        explanation += "\n📝 Click any video below to see detailed emotions";
+        explanation += "\n🔍 Click any video below to see detailed emotions";
 
         tvExplanation.setText(explanation);
     }
 
+    // FIXED: This method now correctly passes all required arguments
     private void onVideoClick(VideoEmotionData video) {
-        // Open video viewer fragment
-        GuardianVideoViewerFragment viewerFragment = GuardianVideoViewerFragment.newInstance(
-                video.videoUrl,
-                video.title,
-                "",  // location
-                "",  // time
-                0,   // photo count
-                video.documentId,
-                linkedPatientUid
-        );
+        Log.d(TAG, "══════════════════════════════════════");
+        Log.d(TAG, "VIDEO CLICK - Opening Guardian Viewer");
+        Log.d(TAG, "══════════════════════════════════════");
+        Log.d(TAG, "Video URL: " + video.videoUrl);
+        Log.d(TAG, "Document ID: " + video.documentId);
+        Log.d(TAG, "Title: " + video.title);
+        Log.d(TAG, "Location: " + video.locationName);
+        Log.d(TAG, "Time: " + video.timeDescription);
+        Log.d(TAG, "Photo Count: " + video.photoCount);
+        Log.d(TAG, "Patient UID: " + linkedPatientUid);
+        Log.d(TAG, "══════════════════════════════════════");
 
-        getParentFragmentManager().beginTransaction()
-                .replace(R.id.container, viewerFragment)
-                .addToBackStack(null)
-                .commit();
+        // Validate data before opening fragment
+        if (video.videoUrl == null || video.videoUrl.isEmpty()) {
+            Toast.makeText(getContext(), "Video URL not available", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "❌ Cannot open video - URL is null or empty");
+            return;
+        }
+
+        if (video.documentId == null || video.documentId.isEmpty()) {
+            Toast.makeText(getContext(), "Video ID not available", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "❌ Cannot open video - Document ID is null or empty");
+            return;
+        }
+
+        if (linkedPatientUid == null || linkedPatientUid.isEmpty()) {
+            Toast.makeText(getContext(), "Patient not linked", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "❌ Cannot open video - Patient UID is null or empty");
+            return;
+        }
+
+        try {
+            // Open video viewer fragment with ALL required parameters
+            GuardianVideoViewerFragment viewerFragment = GuardianVideoViewerFragment.newInstance(
+                    video.videoUrl,
+                    video.title,
+                    video.locationName,
+                    video.timeDescription,
+                    video.photoCount,
+                    video.documentId,
+                    linkedPatientUid
+            );
+
+            getParentFragmentManager().beginTransaction()
+                    .replace(R.id.container, viewerFragment)
+                    .addToBackStack(null)
+                    .commit();
+
+            Log.d(TAG, "✅ Successfully opened GuardianVideoViewerFragment");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error opening video viewer", e);
+            Toast.makeText(getContext(), "Error opening video: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
     }
 
     // Data class for video + emotion info
@@ -418,6 +461,9 @@ public class GuardianHomeFragment extends Fragment {
         String documentId;
         String videoUrl;
         String title;
+        String locationName;
+        String timeDescription;
+        int photoCount;
         long createdAt;
         boolean hasEmotionData = false;
         int totalEmotions = 0;

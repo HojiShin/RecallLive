@@ -5,23 +5,67 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="24dp"
-    android:background="@color/white"
+    android:background="#1E1E1E"
     tools:context=".PatientSignupActivity"
->
+    >
+
+    <!-- App Title with Brain Icon -->
+<!--    <ImageView-->
+<!--        android:id="@+id/iv_app_logo"-->
+<!--        android:layout_width="40dp"-->
+<!--        android:layout_height="40dp"-->
+<!--        android:layout_marginTop="32dp"-->
+<!--        android:layout_marginEnd="10dp"-->
+<!--        android:src="@drawable/ic_brain"-->
+<!--        android:contentDescription="Brain Logo"-->
+<!--        app:layout_constraintEnd_toStartOf="@id/ll_app_title"-->
+<!--        app:layout_constraintTop_toTopOf="parent"-->
+<!--        app:layout_constraintBottom_toBottomOf="@id/ll_app_title" />-->
+
+    <!-- App Title Container -->
+    <LinearLayout
+        android:id="@+id/ll_app_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Recall"
+            android:textColor="#000000"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.02" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Live"
+            android:textColor="#FF0000"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.02" />
+    </LinearLayout>
 
     <!-- Title -->
     <TextView
         android:id="@+id/tvTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Sign up"
-        android:textSize="28sp"
+        android:text="Create Account"
+        android:textSize="32sp"
         android:textStyle="bold"
-        android:textColor="@android:color/black"
-        app:layout_constraintTop_toTopOf="parent"
+        android:textColor="#FFFFFF"
+        android:letterSpacing="0.02"
+        app:layout_constraintTop_toBottomOf="@id/ll_app_title"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="32dp" />
+        android:layout_marginTop="40dp" />
 
     <!-- Patient Button -->
     <Button
@@ -30,13 +74,15 @@
         android:layout_height="56dp"
         android:text="Patient"
         android:textAllCaps="false"
-        android:backgroundTint="#E0E0E0"
-        android:textColor="@android:color/black"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:backgroundTint="#3A3A3A"
+        android:textColor="#FFFFFF"
         app:layout_constraintTop_toBottomOf="@id/tvTitle"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@id/btnGuardian"
         app:layout_constraintWidth_percent="0.45"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="32dp"
         android:layout_marginEnd="8dp" />
 
     <!-- Guardian Button -->
@@ -46,15 +92,17 @@
         android:layout_height="56dp"
         android:text="Guardian"
         android:textAllCaps="false"
-        android:backgroundTint="@android:color/white"
-        android:textColor="@android:color/black"
-        app:strokeColor="@android:color/black"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:backgroundTint="#2A2A2A"
+        android:textColor="#B0B0B0"
+        app:strokeColor="#4A4A4A"
         app:strokeWidth="1dp"
         app:layout_constraintTop_toBottomOf="@id/tvTitle"
         app:layout_constraintStart_toEndOf="@id/btnPatient"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintWidth_percent="0.45"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="32dp"
         android:layout_marginStart="8dp" />
 
     <!-- Email/Phone Label -->
@@ -63,8 +111,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Email/Phone number"
-        android:textSize="16sp"
-        android:textColor="@android:color/black"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
         app:layout_constraintTop_toBottomOf="@id/btnPatient"
         app:layout_constraintStart_toStartOf="parent"
         android:layout_marginTop="32dp" />
@@ -74,11 +123,13 @@
         android:id="@+id/etEmailPhone"
         android:layout_width="0dp"
         android:layout_height="56dp"
-        android:hint="Enter Email or number here"
+        android:hint="Enter your email or phone"
+        android:textColorHint="#707070"
+        android:textColor="#FFFFFF"
         android:inputType="textEmailAddress"
-        android:background="@drawable/edittext_background"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
+        android:background="#2A2A2A"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
         app:layout_constraintTop_toBottomOf="@id/tvEmailPhoneLabel"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -89,9 +140,10 @@
         android:id="@+id/tvGuardianEmailPhoneLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Guardian Email/Phone number (NOT REQUIRED)"
-        android:textSize="16sp"
-        android:textColor="@android:color/black"
+        android:text="Guardian Email/Phone (Optional)"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
         app:layout_constraintTop_toBottomOf="@id/etEmailPhone"
         app:layout_constraintStart_toStartOf="parent"
         android:layout_marginTop="24dp" />
@@ -101,11 +153,13 @@
         android:id="@+id/etGuardianEmailPhone"
         android:layout_width="0dp"
         android:layout_height="56dp"
-        android:hint="Enter guardian Email or number here"
+        android:hint="Enter guardian email or phone"
+        android:textColorHint="#707070"
+        android:textColor="#FFFFFF"
         android:inputType="textEmailAddress"
-        android:background="@drawable/edittext_background"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
+        android:background="#2A2A2A"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
         app:layout_constraintTop_toBottomOf="@id/tvGuardianEmailPhoneLabel"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -117,8 +171,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Password"
-        android:textSize="16sp"
-        android:textColor="@android:color/black"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
         app:layout_constraintTop_toBottomOf="@id/etGuardianEmailPhone"
         app:layout_constraintStart_toStartOf="parent"
         android:layout_marginTop="24dp" />
@@ -128,11 +183,13 @@
         android:id="@+id/etPassword"
         android:layout_width="0dp"
         android:layout_height="56dp"
-        android:hint="Enter password here"
+        android:hint="Enter your password"
+        android:textColorHint="#707070"
+        android:textColor="#FFFFFF"
         android:inputType="textPassword"
-        android:background="@drawable/edittext_background"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
+        android:background="#2A2A2A"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
         app:layout_constraintTop_toBottomOf="@id/tvPasswordLabel"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -146,8 +203,10 @@
         android:text="Sign up"
         android:textAllCaps="false"
         android:textSize="18sp"
+        android:textStyle="bold"
         android:backgroundTint="#DC3545"
-        android:textColor="@android:color/white"
+        android:textColor="#FFFFFF"
+        android:elevation="4dp"
         app:layout_constraintTop_toBottomOf="@id/etPassword"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -158,13 +217,14 @@
         android:id="@+id/btnAlreadyHaveAccountPatient"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Already have an account?"
-        android:textColor="@color/blue"
-        android:textSize="12sp"
-        android:background="@color/white"
+        android:text="Already have an account? Login"
+        android:textColor="#6C9EFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:background="@android:color/transparent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btnSignUp" />
+        app:layout_constraintTop_toBottomOf="@id/btnSignUp"
+        android:layout_marginTop="16dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
