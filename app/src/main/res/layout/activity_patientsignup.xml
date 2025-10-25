@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="24dp"
+    android:background="@color/white"
+    tools:context=".PatientSignupActivity"
+>
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Sign up"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/black"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="32dp" />
+
+    <!-- Patient Button -->
+    <Button
+        android:id="@+id/btnPatient"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:text="Patient"
+        android:textAllCaps="false"
+        android:backgroundTint="#E0E0E0"
+        android:textColor="@android:color/black"
+        app:layout_constraintTop_toBottomOf="@id/tvTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btnGuardian"
+        app:layout_constraintWidth_percent="0.45"
+        android:layout_marginTop="40dp"
+        android:layout_marginEnd="8dp" />
+
+    <!-- Guardian Button -->
+    <Button
+        android:id="@+id/btnGuardian"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:text="Guardian"
+        android:textAllCaps="false"
+        android:backgroundTint="@android:color/white"
+        android:textColor="@android:color/black"
+        app:strokeColor="@android:color/black"
+        app:strokeWidth="1dp"
+        app:layout_constraintTop_toBottomOf="@id/tvTitle"
+        app:layout_constraintStart_toEndOf="@id/btnPatient"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintWidth_percent="0.45"
+        android:layout_marginTop="40dp"
+        android:layout_marginStart="8dp" />
+
+    <!-- Email/Phone Label -->
+    <TextView
+        android:id="@+id/tvEmailPhoneLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Email/Phone number"
+        android:textSize="16sp"
+        android:textColor="@android:color/black"
+        app:layout_constraintTop_toBottomOf="@id/btnPatient"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="32dp" />
+
+    <!-- Email/Phone EditText -->
+    <EditText
+        android:id="@+id/etEmailPhone"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:hint="Enter Email or number here"
+        android:inputType="textEmailAddress"
+        android:background="@drawable/edittext_background"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        app:layout_constraintTop_toBottomOf="@id/tvEmailPhoneLabel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="8dp" />
+
+    <!-- Guardian Email/Phone Label -->
+    <TextView
+        android:id="@+id/tvGuardianEmailPhoneLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Guardian Email/Phone number (NOT REQUIRED)"
+        android:textSize="16sp"
+        android:textColor="@android:color/black"
+        app:layout_constraintTop_toBottomOf="@id/etEmailPhone"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="24dp" />
+
+    <!-- Guardian Email/Phone EditText -->
+    <EditText
+        android:id="@+id/etGuardianEmailPhone"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:hint="Enter guardian Email or number here"
+        android:inputType="textEmailAddress"
+        android:background="@drawable/edittext_background"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        app:layout_constraintTop_toBottomOf="@id/tvGuardianEmailPhoneLabel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="8dp" />
+
+    <!-- Password Label -->
+    <TextView
+        android:id="@+id/tvPasswordLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Password"
+        android:textSize="16sp"
+        android:textColor="@android:color/black"
+        app:layout_constraintTop_toBottomOf="@id/etGuardianEmailPhone"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="24dp" />
+
+    <!-- Password EditText -->
+    <EditText
+        android:id="@+id/etPassword"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:hint="Enter password here"
+        android:inputType="textPassword"
+        android:background="@drawable/edittext_background"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        app:layout_constraintTop_toBottomOf="@id/tvPasswordLabel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="8dp" />
+
+    <!-- Sign Up Button -->
+    <Button
+        android:id="@+id/btnSignUp"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:text="Sign up"
+        android:textAllCaps="false"
+        android:textSize="18sp"
+        android:backgroundTint="#DC3545"
+        android:textColor="@android:color/white"
+        app:layout_constraintTop_toBottomOf="@id/etPassword"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="40dp" />
+
+    <!-- Already have account text -->
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btnAlreadyHaveAccountPatient"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Already have an account?"
+        android:textColor="@color/blue"
+        android:textSize="12sp"
+        android:background="@color/white"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btnSignUp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

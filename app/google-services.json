@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "89167840048",
+    "project_id": "recalllive",
+    "storage_bucket": "recalllive.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:89167840048:android:d0c7fc953467a58a49bef5",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBaCktvueEi3ltZXsz9WDZ5nKAgTc1Cap8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:89167840048:android:5d7b4cb1ea7aecc549bef5",
+        "android_client_info": {
+          "package_name": "com.example.recalllive"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBaCktvueEi3ltZXsz9WDZ5nKAgTc1Cap8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
