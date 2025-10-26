@@ -82,9 +82,9 @@ public class LoginActivity extends AppCompatActivity {
         DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
         currentUserId = userId;
 
-        Log.d(TAG, "═══════════════════════════════════════════════");
+        Log.d(TAG, "╔═══════════════════════════════════════════╗");
         Log.d(TAG, "CHECKING USER TYPE FOR: " + userId);
-        Log.d(TAG, "═══════════════════════════════════════════════");
+        Log.d(TAG, "╚═══════════════════════════════════════════╝");
 
         // Check Patient first
         databaseReference.child("Patient").child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
@@ -191,9 +191,9 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void checkPatientClustersAndProceed(String patientUid) {
-        Log.d(TAG, "═══════════════════════════════════════════════");
+        Log.d(TAG, "╔═══════════════════════════════════════════╗");
         Log.d(TAG, "CHECKING PATIENT CLUSTERS");
-        Log.d(TAG, "═══════════════════════════════════════════════");
+        Log.d(TAG, "╚═══════════════════════════════════════════╝");
 
         DatabaseReference clusterRef = FirebaseDatabase.getInstance().getReference()
                 .child("Patient")
@@ -207,7 +207,7 @@ public class LoginActivity extends AppCompatActivity {
 
                 if (isFirstTime) {
                     Log.d(TAG, "⚠️ NO CLUSTERS - First time patient");
-                    showFirstTimePatientSetup(patientUid, true);
+                    showFirstTimePatientSetup(patientUid);
                 } else {
                     Long lastUpdated = snapshot.child("lastUpdated").getValue(Long.class);
                     Long totalClusters = snapshot.child("totalClusters").getValue(Long.class);
@@ -216,59 +216,60 @@ public class LoginActivity extends AppCompatActivity {
                     Log.d(TAG, "  Total clusters: " + totalClusters);
                     Log.d(TAG, "  Last updated: " + lastUpdated);
 
-                    checkPermissionsAndStartServices(patientUid, false);
+                    // FIXED: For existing patients logging in, always pass true for video generation
+                    checkPermissionsAndStartServices(patientUid);
                 }
             }
 
             @Override
             public void onCancelled(DatabaseError error) {
                 Log.e(TAG, "❌ Error checking clusters: " + error.getMessage());
-                checkPermissionsAndStartServices(patientUid, false);
+                checkPermissionsAndStartServices(patientUid);
             }
         });
     }
 
-    private void showFirstTimePatientSetup(String patientUid, boolean isFirstTime) {
+    private void showFirstTimePatientSetup(String patientUid) {
         new AlertDialog.Builder(this)
                 .setTitle("Welcome to RecallLive!")
                 .setMessage("We'll organize your photos and create daily memory videos for you.\n\n" +
                         "Your photos will be analyzed privately on your device and " +
                         "a new memory video will be generated each day.")
                 .setPositiveButton("Continue", (dialog, which) -> {
-                    checkPermissionsAndStartServices(patientUid, isFirstTime);
+                    checkPermissionsAndStartServices(patientUid);
                 })
                 .setCancelable(false)
                 .show();
     }
 
-    private void checkPermissionsAndStartServices(String patientUid, boolean isFirstTime) {
+    private void checkPermissionsAndStartServices(String patientUid) {
         if (hasStoragePermission()) {
-            startAutomaticServices(patientUid, isFirstTime);
-        } else if (isFirstTime) {
-            requestStoragePermission(patientUid);
+            // FIXED: Always treat login as "signup/login" trigger (true) for video generation
+            startAutomaticServices(patientUid);
         } else {
-            Toast.makeText(this,
-                    "Photo access needed for memory videos. Enable in settings.",
-                    Toast.LENGTH_SHORT).show();
-            navigateToHome();
+            requestStoragePermission(patientUid);
         }
     }
 
-    private void startAutomaticServices(String patientUid, boolean isFirstTime) {
-        Log.d(TAG, "═══════════════════════════════════════════════");
-        Log.d(TAG, "STARTING AUTOMATIC SERVICES");
+    /**
+     * FIXED: Removed isFirstTime parameter - login always generates 10 videos
+     */
+    private void startAutomaticServices(String patientUid) {
+        Log.d(TAG, "╔═══════════════════════════════════════════╗");
+        Log.d(TAG, "STARTING AUTOMATIC SERVICES (LOGIN)");
         Log.d(TAG, "Patient UID: " + patientUid);
-        Log.d(TAG, "Is First Time: " + isFirstTime);
-        Log.d(TAG, "═══════════════════════════════════════════════");
+        Log.d(TAG, "╚═══════════════════════════════════════════╝");
 
         // Start auto clustering
         Log.d(TAG, "▶️ Step 1: Starting auto clustering...");
         autoClusteringService.initializeForPatient(patientUid);
         Log.d(TAG, "✓ Auto clustering initialized");
 
-        // CRITICAL: Start automatic video generation
-        Log.d(TAG, "▶️ Step 2: Starting automatic video service...");
-        automaticVideoService.initializeForPatient(patientUid, isFirstTime);
+        // CRITICAL FIX: Always pass TRUE for login to trigger:
+        // 1. Cleanup of old videos
+        // 2. Generation of 10 new videos
+        Log.d(TAG, "▶️ Step 2: Starting automatic video service (LOGIN = 10 videos)...");
+        automaticVideoService.initializeForPatient(patientUid, true);
         Log.d(TAG, "✓ Automatic video service initialized");
 
         // Verify video service is working
@@ -276,15 +277,15 @@ public class LoginActivity extends AppCompatActivity {
         int count = prefs.getInt("daily_video_count", 0);
         String date = prefs.getString("last_video_date", "never");
 
-        Log.d(TAG, "═══════════════════════════════════════════════");
+        Log.d(TAG, "╔═══════════════════════════════════════════╗");
         Log.d(TAG, "VIDEO SERVICE STATUS");
         Log.d(TAG, "Current video count: " + count + "/10");
         Log.d(TAG, "Last video date: " + date);
-        Log.d(TAG, "═══════════════════════════════════════════════");
+        Log.d(TAG, "╚═══════════════════════════════════════════╝");
 
         // Show progress message
         Toast.makeText(this,
-                "Generating your memory video...",
+                "Generating 10 memory videos...",
                 Toast.LENGTH_LONG).show();
 
         // Wait 2 seconds then navigate (give services time to start)
@@ -348,7 +349,7 @@ public class LoginActivity extends AppCompatActivity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Log.d(TAG, "✓ Storage permission granted");
                 if (!patientUid.isEmpty()) {
-                    startAutomaticServices(patientUid, true);
+                    startAutomaticServices(patientUid);
                 }
             } else {
                 Toast.makeText(this,
@@ -378,15 +379,15 @@ public class LoginActivity extends AppCompatActivity {
         String savedGuardianUid = prefs.getString("guardian_uid", "NOT SET");
         String linkedPatientUid = prefs.getString("linked_patient_uid", "NOT SET");
 
-        Log.d(TAG, "═══════════════════════════════════════════════");
+        Log.d(TAG, "╔═══════════════════════════════════════════╗");
         Log.d(TAG, "NAVIGATING TO HOME");
-        Log.d(TAG, "═══════════════════════════════════════════════");
+        Log.d(TAG, "╚═══════════════════════════════════════════╝");
         Log.d(TAG, "userType boolean: " + (userType ? "TRUE (PATIENT)" : "FALSE (GUARDIAN)"));
         Log.d(TAG, "SharedPrefs user_type: " + savedUserType);
         Log.d(TAG, "SharedPrefs patient_uid: " + savedPatientUid);
         Log.d(TAG, "SharedPrefs guardian_uid: " + savedGuardianUid);
         Log.d(TAG, "SharedPrefs linked_patient_uid: " + linkedPatientUid);
-        Log.d(TAG, "═══════════════════════════════════════════════");
+        Log.d(TAG, "╚═══════════════════════════════════════════╝");
 
         Toast.makeText(getApplicationContext(), "Login successful as " + (userType ? "Patient" : "Guardian"), Toast.LENGTH_SHORT).show();
 
@@ -412,10 +413,10 @@ public class LoginActivity extends AppCompatActivity {
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         if (task.isSuccessful()) {
                             String userId = firebaseAuth.getCurrentUser().getUid();
-                            Log.d(TAG, "═══════════════════════════════════════════════");
+                            Log.d(TAG, "╔═══════════════════════════════════════════╗");
                             Log.d(TAG, "LOGIN SUCCESSFUL");
                             Log.d(TAG, "User ID: " + userId);
-                            Log.d(TAG, "═══════════════════════════════════════════════");
+                            Log.d(TAG, "╚═══════════════════════════════════════════╝");
 
                             // Reset userType before checking
                             userType = null;

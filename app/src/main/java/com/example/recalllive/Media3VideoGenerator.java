@@ -3,11 +3,11 @@ package com.example.recalllive;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
-import android.media.MediaExtractor;
 import android.net.Uri;
 import android.util.Log;
 
@@ -32,9 +32,9 @@ import java.util.Random;
 public class Media3VideoGenerator {
     private static final String TAG = "Media3VideoGenerator";
 
-    // Video configuration
-    private static final int VIDEO_WIDTH = 1280;
-    private static final int VIDEO_HEIGHT = 720;
+    // Video configuration - using portrait for vertical videos
+    private static final int VIDEO_WIDTH = 720;
+    private static final int VIDEO_HEIGHT = 1280;
     private static final int VIDEO_BITRATE = 2_000_000;
     private static final int FRAME_RATE = 1;
     private static final String MIME_TYPE = "video/avc";
@@ -57,18 +57,11 @@ public class Media3VideoGenerator {
         this.random = new Random();
     }
 
-    /**
-     * Generate a video from a photo cluster with default duration
-     */
     public void generateVideoFromCluster(PhotoClusteringManager.PhotoCluster cluster,
                                          VideoGenerationCallback callback) {
-        // Default: 4 seconds per image
         generateVideoFromCluster(cluster, 0, callback);
     }
 
-    /**
-     * ADDED: Generate a video from a photo cluster with custom TTS duration
-     */
     public void generateVideoFromCluster(PhotoClusteringManager.PhotoCluster cluster,
                                          int ttsDurationSeconds,
                                          VideoGenerationCallback callback) {
@@ -82,20 +75,15 @@ public class Media3VideoGenerator {
             return;
         }
 
-        // Select up to 4 random photos
         int photosToUse = Math.min(photos.size(), PHOTOS_PER_VIDEO);
         List<PhotoData> selectedPhotos = selectRandomPhotos(photos, photosToUse);
 
         Log.d(TAG, "Selected " + selectedPhotos.size() + " photos from cluster of " +
                 photos.size() + " photos");
 
-        // Convert photos to video with custom duration
         createVideoFromPhotos(selectedPhotos, cluster, ttsDurationSeconds, callback);
     }
 
-    /**
-     * Select random photos from the cluster
-     */
     private List<PhotoData> selectRandomPhotos(List<PhotoData> photos, int count) {
         List<PhotoData> selected = new ArrayList<>();
 
@@ -105,7 +93,6 @@ public class Media3VideoGenerator {
 
         List<PhotoData> shuffled = new ArrayList<>(photos);
 
-        // Fisher-Yates shuffle
         for (int i = shuffled.size() - 1; i > 0; i--) {
             int j = random.nextInt(i + 1);
             PhotoData temp = shuffled.get(i);
@@ -120,9 +107,6 @@ public class Media3VideoGenerator {
         return selected;
     }
 
-    /**
-     * UPDATED: Create video from photos with configurable duration
-     */
     private void createVideoFromPhotos(List<PhotoData> photos,
                                        PhotoClusteringManager.PhotoCluster cluster,
                                        int ttsDurationSeconds,
@@ -138,7 +122,8 @@ public class Media3VideoGenerator {
             int failedCount = 0;
 
             for (PhotoData photo : photos) {
-                Bitmap bitmap = loadAndResizeBitmap(photo.getPhotoUri());
+                // FIXED: Use EXACT same loading method as quiz
+                Bitmap bitmap = loadImageFromUriExactlyLikeQuiz(photo.getPhotoUri());
                 if (bitmap != null) {
                     bitmaps.add(bitmap);
                 } else {
@@ -147,7 +132,6 @@ public class Media3VideoGenerator {
                 }
             }
 
-            // Need at least 1 photo to make a video
             if (bitmaps.isEmpty()) {
                 Log.e(TAG, "Failed to load ANY images - all photos missing or inaccessible");
                 callback.onError("All photos are missing or inaccessible");
@@ -161,17 +145,14 @@ public class Media3VideoGenerator {
 
             Log.d(TAG, "Loaded " + bitmaps.size() + " bitmaps successfully");
 
-            // Calculate image duration based on TTS
             int imageDurationSeconds = calculateImageDurationSeconds(ttsDurationSeconds, bitmaps.size());
-            Log.d(TAG, "═══════════════════════════════════════");
+            Log.d(TAG, "╔═══════════════════════════════════════╗");
             Log.d(TAG, "VIDEO GENERATION PARAMETERS");
             Log.d(TAG, "TTS Duration Input: " + ttsDurationSeconds + " seconds");
             Log.d(TAG, "Image Duration: " + imageDurationSeconds + " seconds per image");
             Log.d(TAG, "Number of Images: " + bitmaps.size());
             Log.d(TAG, "Total Video Duration: " + (imageDurationSeconds * bitmaps.size()) + " seconds");
-            Log.d(TAG, "═══════════════════════════════════════");
-            Log.d(TAG, "Image duration: " + imageDurationSeconds + " seconds per image");
-            Log.d(TAG, "Total video duration: " + (imageDurationSeconds * bitmaps.size()) + " seconds");
+            Log.d(TAG, "╚═══════════════════════════════════════╝");
 
             boolean success = createVideoFile(bitmaps, outputFile, imageDurationSeconds);
 
@@ -196,23 +177,77 @@ public class Media3VideoGenerator {
     }
 
     /**
-     * ADDED: Calculate image duration based on TTS narration length
+     * FIXED: Load image EXACTLY like quiz does - this ensures correct colors
+     * Copied from PatientQuizFragment.loadImageFromUri()
      */
-    private int calculateImageDurationSeconds(int ttsDurationSeconds, int photoCount) {
-        if (ttsDurationSeconds <= 0 || photoCount <= 0) {
-            return 4; // Default 4 seconds per image
+    private Bitmap loadImageFromUriExactlyLikeQuiz(String uriString) {
+        try {
+            Uri uri = Uri.parse(uriString);
+            InputStream inputStream = context.getContentResolver().openInputStream(uri);
+
+            if (inputStream != null) {
+                // CRITICAL: Use same BitmapFactory options as quiz
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+                options.inPremultiplied = true;
+                options.inDither = false;
+                options.inScaled = false;  // CRITICAL: Don't scale during decode
+
+                Bitmap bitmap = BitmapFactory.decodeStream(inputStream, null, options);
+                inputStream.close();
+
+                if (bitmap != null) {
+                    // Now scale to video dimensions
+                    return scaleToVideoDimensions(bitmap);
+                } else {
+                    return null;
+                }
+            } else {
+                return null;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to load image: " + uriString, e);
+            return null;
         }
-
-        // Distribute TTS duration evenly across photos, minimum 3 seconds per image
-        int durationPerImage = Math.max(3, (int) Math.ceil((double) ttsDurationSeconds / photoCount));
-
-        // Cap at 10 seconds per image
-        return Math.min(10, durationPerImage);
     }
 
     /**
-     * UPDATED: Create video file with configurable image duration
+     * Scale bitmap to video dimensions while handling orientation
      */
+    private Bitmap scaleToVideoDimensions(Bitmap original) {
+        int width = original.getWidth();
+        int height = original.getHeight();
+
+        // If landscape, rotate 90 degrees
+        if (width > height) {
+            Log.d(TAG, "Converting landscape to portrait: " + width + "x" + height);
+            Matrix matrix = new Matrix();
+            matrix.postRotate(90);
+            Bitmap rotated = Bitmap.createBitmap(original, 0, 0, width, height, matrix, true);
+            if (rotated != original) {
+                original.recycle();
+            }
+            original = rotated;
+        }
+
+        // Scale to exact video dimensions
+        Bitmap scaled = Bitmap.createScaledBitmap(original, VIDEO_WIDTH, VIDEO_HEIGHT, true);
+        if (scaled != original) {
+            original.recycle();
+        }
+
+        return scaled;
+    }
+
+    private int calculateImageDurationSeconds(int ttsDurationSeconds, int photoCount) {
+        if (ttsDurationSeconds <= 0 || photoCount <= 0) {
+            return 4;
+        }
+
+        int durationPerImage = Math.max(3, (int) Math.ceil((double) ttsDurationSeconds / photoCount));
+        return Math.min(10, durationPerImage);
+    }
+
     private boolean createVideoFile(List<Bitmap> bitmaps, File outputFile, int imageDurationSeconds) {
         MediaCodec encoder = null;
         MediaMuxer muxer = null;
@@ -267,6 +302,7 @@ public class Media3VideoGenerator {
                 Bitmap bitmap = bitmaps.get(i);
 
                 for (int frame = 0; frame < framesPerImage; frame++) {
+                    // FIXED: Convert bitmap to YUV420 with proper color handling
                     byte[] input = convertBitmapToYUV420(bitmap, VIDEO_WIDTH, VIDEO_HEIGHT);
 
                     if (input == null || input.length == 0) {
@@ -286,7 +322,6 @@ public class Media3VideoGenerator {
                         }
                     }
 
-                    // Process encoder output
                     int outputIndex = encoder.dequeueOutputBuffer(bufferInfo, TIMEOUT_US);
 
                     if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
@@ -363,6 +398,78 @@ public class Media3VideoGenerator {
         }
     }
 
+    /**
+     * FIXED: Convert bitmap to YUV420 Planar (I420) format with proper color handling
+     * Uses ITU-R BT.601 standard for correct color conversion
+     */
+    private byte[] convertBitmapToYUV420(Bitmap bitmap, int width, int height) {
+        // Ensure bitmap is correct size
+        if (bitmap.getWidth() != width || bitmap.getHeight() != height) {
+            Bitmap temp = Bitmap.createScaledBitmap(bitmap, width, height, true);
+            if (temp != bitmap) {
+                bitmap.recycle();
+            }
+            bitmap = temp;
+        }
+
+        // CRITICAL: Ensure ARGB_8888 format (same as quiz)
+        if (bitmap.getConfig() != Bitmap.Config.ARGB_8888) {
+            Bitmap temp = bitmap.copy(Bitmap.Config.ARGB_8888, false);
+            if (temp != null) {
+                if (temp != bitmap) {
+                    bitmap.recycle();
+                }
+                bitmap = temp;
+            }
+        }
+
+        int frameSize = width * height;
+        int chromaSize = frameSize / 4;
+
+        int[] argb = new int[frameSize];
+        bitmap.getPixels(argb, 0, width, 0, 0, width, height);
+
+        // YUV420 Planar format (I420): Y plane, U plane, V plane (separate)
+        byte[] yuv = new byte[frameSize + chromaSize * 2];
+
+        // Fill Y values (luminance)
+        for (int i = 0; i < frameSize; i++) {
+            int pixel = argb[i];
+            int R = (pixel >> 16) & 0xff;
+            int G = (pixel >> 8) & 0xff;
+            int B = pixel & 0xff;
+
+            // ITU-R BT.601 conversion - STANDARD for video
+            int Y = ((66 * R + 129 * G + 25 * B + 128) >> 8) + 16;
+            yuv[i] = (byte) Math.max(0, Math.min(255, Y));
+        }
+
+        // Fill U and V values (chrominance - subsampled 4:2:0)
+        int uvIndex = 0;
+        for (int j = 0; j < height; j += 2) {
+            for (int i = 0; i < width; i += 2) {
+                // Sample 2x2 block
+                int index = j * width + i;
+                int pixel = argb[index];
+
+                int R = (pixel >> 16) & 0xff;
+                int G = (pixel >> 8) & 0xff;
+                int B = pixel & 0xff;
+
+                // ITU-R BT.601 conversion for chrominance
+                int U = ((-38 * R - 74 * G + 112 * B + 128) >> 8) + 128;
+                int V = ((112 * R - 94 * G - 18 * B + 128) >> 8) + 128;
+
+                // Write to SEPARATE U and V planes (I420 format)
+                yuv[frameSize + uvIndex] = (byte) Math.max(0, Math.min(255, U));
+                yuv[frameSize + chromaSize + uvIndex] = (byte) Math.max(0, Math.min(255, V));
+                uvIndex++;
+            }
+        }
+
+        return yuv;
+    }
+
     private int findSupportedColorFormat() {
         try {
             MediaCodec codec = MediaCodec.createEncoderByType(MIME_TYPE);
@@ -394,123 +501,6 @@ public class Media3VideoGenerator {
         }
 
         return -1;
-    }
-
-    private byte[] convertBitmapToYUV420(Bitmap bitmap, int width, int height) {
-        if (bitmap.getWidth() != width || bitmap.getHeight() != height) {
-            Bitmap temp = Bitmap.createScaledBitmap(bitmap, width, height, true);
-            if (temp != bitmap) {
-                bitmap.recycle();
-            }
-            bitmap = temp;
-        }
-
-        if (bitmap.getConfig() != Bitmap.Config.ARGB_8888) {
-            Bitmap temp = bitmap.copy(Bitmap.Config.ARGB_8888, false);
-            if (temp != null) {
-                if (temp != bitmap) {
-                    bitmap.recycle();
-                }
-                bitmap = temp;
-            }
-        }
-
-        int[] pixels = new int[width * height];
-        try {
-            bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting pixels from bitmap", e);
-            return null;
-        }
-
-        byte[] yuv = new byte[width * height * 3 / 2];
-        int yIndex = 0;
-        int uvIndex = width * height;
-
-        for (int j = 0; j < height; j++) {
-            for (int i = 0; i < width; i++) {
-                int pixelIndex = j * width + i;
-                int pixel = pixels[pixelIndex];
-
-                int r = (pixel >> 16) & 0xff;
-                int g = (pixel >> 8) & 0xff;
-                int b = pixel & 0xff;
-
-                int y = ((66 * r + 129 * g + 25 * b + 128) >> 8) + 16;
-                yuv[yIndex++] = (byte) Math.max(0, Math.min(255, y));
-
-                if (j % 2 == 0 && i % 2 == 0) {
-                    int u = ((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128;
-                    int v = ((112 * r - 94 * g - 18 * b + 128) >> 8) + 128;
-
-                    yuv[uvIndex++] = (byte) Math.max(0, Math.min(255, v));
-                    yuv[uvIndex++] = (byte) Math.max(0, Math.min(255, u));
-                }
-            }
-        }
-
-        return yuv;
-    }
-
-    private Bitmap loadAndResizeBitmap(String photoUri) {
-        try {
-            Uri uri = Uri.parse(photoUri);
-            InputStream input = context.getContentResolver().openInputStream(uri);
-
-            if (input == null) {
-                return null;
-            }
-
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            BitmapFactory.decodeStream(input, null, options);
-            input.close();
-
-            int inSampleSize = calculateInSampleSize(
-                    options.outWidth, options.outHeight, VIDEO_WIDTH, VIDEO_HEIGHT);
-
-            input = context.getContentResolver().openInputStream(uri);
-            options = new BitmapFactory.Options();
-            options.inSampleSize = inSampleSize;
-            options.inJustDecodeBounds = false;
-            options.inPreferredConfig = Bitmap.Config.ARGB_8888;
-
-            Bitmap bitmap = BitmapFactory.decodeStream(input, null, options);
-            input.close();
-
-            if (bitmap == null) {
-                return null;
-            }
-
-            Bitmap scaled = Bitmap.createScaledBitmap(
-                    bitmap, VIDEO_WIDTH, VIDEO_HEIGHT, true);
-
-            if (bitmap != scaled) {
-                bitmap.recycle();
-            }
-
-            return scaled;
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error loading bitmap: " + photoUri, e);
-            return null;
-        }
-    }
-
-    private int calculateInSampleSize(int width, int height, int reqWidth, int reqHeight) {
-        int inSampleSize = 1;
-
-        if (height > reqHeight || width > reqWidth) {
-            final int halfHeight = height / 2;
-            final int halfWidth = width / 2;
-
-            while ((halfHeight / inSampleSize) >= reqHeight
-                    && (halfWidth / inSampleSize) >= reqWidth) {
-                inSampleSize *= 2;
-            }
-        }
-
-        return inSampleSize;
     }
 
     private void uploadVideoToFirebase(File videoFile,

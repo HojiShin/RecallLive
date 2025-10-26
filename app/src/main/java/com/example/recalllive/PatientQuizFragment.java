@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -37,21 +38,19 @@ import java.util.Map;
 import java.util.Random;
 
 /**
- * FIXED: Quiz Fragment with DAILY RESET
- * - Generates new random questions every day
- * - Uses random clusters and photos
- * - Resets at midnight like videos
+ * FIXED: Quiz Fragment with proper question limiting and image orientation
+ * - Always generates exactly TOTAL_QUESTIONS (10) questions
+ * - Properly converts horizontal images to vertical
+ * - Daily reset functionality
  */
 public class PatientQuizFragment extends Fragment {
     private static final String TAG = "PatientQuizFragment";
     private static final int TOTAL_QUESTIONS = 10;
 
-    // SharedPreferences for daily reset
     private static final String PREFS_NAME = "RecallLiveQuizPrefs";
     private static final String KEY_LAST_QUIZ_DATE = "last_quiz_date";
     private static final String KEY_QUIZ_COMPLETED_TODAY = "quiz_completed_today";
 
-    // Random world locations for wrong answers
     private static final List<String> WORLD_LOCATIONS = Arrays.asList(
             "Paris, France", "Tokyo, Japan", "New York, USA", "London, England",
             "Sydney, Australia", "Rome, Italy", "Berlin, Germany", "Madrid, Spain",
@@ -73,7 +72,6 @@ public class PatientQuizFragment extends Fragment {
             "Glasgow, Scotland", "Cardiff, Wales", "Belfast, Northern Ireland"
     );
 
-    // UI Elements
     private TextView tvQuestionTitle;
     private TextView tvQuestionText;
     private ImageView ivQuestionImage;
@@ -85,7 +83,6 @@ public class PatientQuizFragment extends Fragment {
     private Button btnNextQuestion;
     private TextView tvScore;
 
-    // Data
     private String patientUid;
     private List<QuizQuestion> quizQuestions;
     private int currentQuestionIndex = 0;
@@ -94,7 +91,6 @@ public class PatientQuizFragment extends Fragment {
     private Random random;
     private SharedPreferences prefs;
 
-    // Firebase
     private FirebaseClusterManager clusterManager;
 
     @Override
@@ -107,10 +103,8 @@ public class PatientQuizFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Initialize preferences
         prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
-        // Initialize views
         tvQuestionTitle = view.findViewById(R.id.tv_question_title);
         tvQuestionText = view.findViewById(R.id.tv_question_text);
         ivQuestionImage = view.findViewById(R.id.iv_question_image);
@@ -122,7 +116,6 @@ public class PatientQuizFragment extends Fragment {
         btnNextQuestion = view.findViewById(R.id.btn_next_question);
         tvScore = view.findViewById(R.id.tv_score);
 
-        // Initialize data
         FirebaseAuth auth = FirebaseAuth.getInstance();
         if (auth.getCurrentUser() != null) {
             patientUid = auth.getCurrentUser().getUid();
@@ -135,19 +128,14 @@ public class PatientQuizFragment extends Fragment {
         random = new Random();
         quizQuestions = new ArrayList<>();
 
-        // Setup answer button listeners
         setupAnswerButtons();
 
-        // Setup next button
         btnNextQuestion.setOnClickListener(v -> {
             currentQuestionIndex++;
             loadNextQuestion();
         });
 
-        // Check if quiz needs reset
         checkDailyReset();
-
-        // Load quiz data
         loadQuizData();
     }
 
@@ -162,23 +150,19 @@ public class PatientQuizFragment extends Fragment {
         Log.d(TAG, "Quiz fragment destroyed");
     }
 
-    /**
-     * Check if quiz needs daily reset
-     */
     private void checkDailyReset() {
         String today = getTodayDateString();
         String lastQuizDate = prefs.getString(KEY_LAST_QUIZ_DATE, "");
 
-        Log.d(TAG, "════════════════════════════════════════════════════");
+        Log.d(TAG, "═══════════════════════════════════════════════════");
         Log.d(TAG, "        QUIZ DAILY RESET CHECK");
-        Log.d(TAG, "════════════════════════════════════════════════════");
+        Log.d(TAG, "═══════════════════════════════════════════════════");
         Log.d(TAG, "Today: " + today);
         Log.d(TAG, "Last quiz date: " + lastQuizDate);
 
         if (!today.equals(lastQuizDate)) {
             Log.d(TAG, "🔄 New day detected - RESETTING QUIZ");
 
-            // Reset quiz state
             prefs.edit()
                     .putString(KEY_LAST_QUIZ_DATE, today)
                     .putBoolean(KEY_QUIZ_COMPLETED_TODAY, false)
@@ -190,12 +174,9 @@ public class PatientQuizFragment extends Fragment {
             Log.d(TAG, "Same day - Quiz completed today: " + completedToday);
         }
 
-        Log.d(TAG, "════════════════════════════════════════════════════");
+        Log.d(TAG, "═══════════════════════════════════════════════════");
     }
 
-    /**
-     * Get today's date string
-     */
     private String getTodayDateString() {
         return new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
     }
@@ -217,9 +198,9 @@ public class PatientQuizFragment extends Fragment {
     }
 
     private void loadQuizData() {
-        Log.d(TAG, "════════════════════════════════════════════════════");
+        Log.d(TAG, "═══════════════════════════════════════════════════");
         Log.d(TAG, "        LOADING QUIZ DATA");
-        Log.d(TAG, "════════════════════════════════════════════════════");
+        Log.d(TAG, "═══════════════════════════════════════════════════");
         Log.d(TAG, "Patient: " + patientUid);
 
         tvQuestionTitle.setText("Loading Quiz...");
@@ -255,7 +236,7 @@ public class PatientQuizFragment extends Fragment {
 
             @Override
             public void onError(String error) {
-                Log.e(TAG, "❌ Failed to load clusters: " + error);
+                Log.e(TAG, "✗ Failed to load clusters: " + error);
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
                         Toast.makeText(getContext(),
@@ -296,21 +277,18 @@ public class PatientQuizFragment extends Fragment {
     }
 
     /**
-     * Generate RANDOM questions from available clusters
-     * NEW: Shuffles clusters and photos for daily variety
+     * FIXED: Generate exactly TOTAL_QUESTIONS (10) questions, no more
      */
     private void generateRandomQuestionsFromClusters(List<PhotoClusteringManager.PhotoCluster> clusters) {
-        Log.d(TAG, "════════════════════════════════════════════════════");
+        Log.d(TAG, "═══════════════════════════════════════════════════");
         Log.d(TAG, "     GENERATING RANDOM DAILY QUESTIONS");
-        Log.d(TAG, "════════════════════════════════════════════════════");
+        Log.d(TAG, "═══════════════════════════════════════════════════");
 
-        // Shuffle clusters for randomness
         List<PhotoClusteringManager.PhotoCluster> shuffledClusters = new ArrayList<>(clusters);
         Collections.shuffle(shuffledClusters, random);
 
         Log.d(TAG, "Shuffled " + shuffledClusters.size() + " clusters randomly");
 
-        // Collect ALL photos from ALL clusters
         List<PhotoData> allPhotos = new ArrayList<>();
         Map<PhotoData, String> photoLocationMap = new HashMap<>();
 
@@ -343,14 +321,21 @@ public class PatientQuizFragment extends Fragment {
             return;
         }
 
-        // SHUFFLE ALL PHOTOS for maximum randomness
         Collections.shuffle(allPhotos, random);
         Log.d(TAG, "Shuffled all photos randomly");
 
-        // Generate questions
+        // FIXED: Limit to exactly TOTAL_QUESTIONS
         int questionsToGenerate = Math.min(TOTAL_QUESTIONS, allPhotos.size());
-        Log.d(TAG, "Generating " + questionsToGenerate + " random questions");
+        Log.d(TAG, "═══════════════════════════════════════════════════");
+        Log.d(TAG, "GENERATING EXACTLY " + questionsToGenerate + " QUESTIONS");
+        Log.d(TAG, "Total photos available: " + allPhotos.size());
+        Log.d(TAG, "Questions to create: " + questionsToGenerate);
+        Log.d(TAG, "═══════════════════════════════════════════════════");
 
+        // CRITICAL: Clear any existing questions first
+        quizQuestions.clear();
+
+        // Generate exactly questionsToGenerate questions
         for (int i = 0; i < questionsToGenerate; i++) {
             PhotoData selectedPhoto = allPhotos.get(i);
             String correctAnswer = photoLocationMap.get(selectedPhoto);
@@ -359,10 +344,8 @@ public class PatientQuizFragment extends Fragment {
                 correctAnswer = "Unknown Location";
             }
 
-            // Get 3 random wrong answers
             List<String> wrongAnswers = getRandomWorldLocations(3, correctAnswer);
 
-            // Create question
             QuizQuestion question = new QuizQuestion();
             question.questionNumber = i + 1;
             question.photoUri = selectedPhoto.getPhotoUri();
@@ -371,20 +354,24 @@ public class PatientQuizFragment extends Fragment {
             question.allAnswers.add(question.correctAnswer);
             question.allAnswers.addAll(wrongAnswers);
 
-            // Shuffle answer order
             Collections.shuffle(question.allAnswers, random);
 
             quizQuestions.add(question);
 
-            Log.d(TAG, "  Question " + question.questionNumber + ": " + question.correctAnswer);
+            Log.d(TAG, "  Question " + question.questionNumber + "/" + questionsToGenerate + ": " + question.correctAnswer);
         }
 
-        Log.d(TAG, "╔═══════════════════════════════════════╗");
-        Log.d(TAG, "║  ✓ GENERATED " + quizQuestions.size() + " RANDOM QUESTIONS ✓  ║");
-        Log.d(TAG, "╚═══════════════════════════════════════╝");
-        Log.d(TAG, "════════════════════════════════════════════════════");
+        Log.d(TAG, "╔═══════════════════════════════════════════════╗");
+        Log.d(TAG, "║  ✓ GENERATED " + quizQuestions.size() + " QUESTIONS ✓           ║");
+        Log.d(TAG, "╚═══════════════════════════════════════════════╝");
 
-        // Load first question
+        // VERIFICATION: Log final quiz size
+        Log.d(TAG, "FINAL VERIFICATION:");
+        Log.d(TAG, "  quizQuestions.size() = " + quizQuestions.size());
+        Log.d(TAG, "  TOTAL_QUESTIONS = " + TOTAL_QUESTIONS);
+        Log.d(TAG, "  Match: " + (quizQuestions.size() == questionsToGenerate));
+        Log.d(TAG, "═══════════════════════════════════════════════════");
+
         if (getActivity() != null) {
             getActivity().runOnUiThread(() -> {
                 if (quizQuestions.size() > 0) {
@@ -399,42 +386,43 @@ public class PatientQuizFragment extends Fragment {
         }
     }
 
-    /**
-     * Get random world locations (excluding similar to correct answer)
-     */
     private List<String> getRandomWorldLocations(int count, String correctAnswer) {
         List<String> availableLocations = new ArrayList<>(WORLD_LOCATIONS);
 
-        // Remove locations too similar to correct answer
         availableLocations.removeIf(location ->
                 location.equalsIgnoreCase(correctAnswer) ||
                         correctAnswer.toLowerCase().contains(location.split(",")[0].toLowerCase()) ||
                         location.toLowerCase().contains(correctAnswer.split(",")[0].toLowerCase())
         );
 
-        // Shuffle and pick
         Collections.shuffle(availableLocations, random);
         return availableLocations.subList(0, Math.min(count, availableLocations.size()));
     }
 
     private void loadNextQuestion() {
-        Log.d(TAG, "Loading question " + (currentQuestionIndex + 1) + "/" + quizQuestions.size());
+        Log.d(TAG, "═══════════════════════════════════════════════════");
+        Log.d(TAG, "Loading question index: " + currentQuestionIndex);
+        Log.d(TAG, "Total questions in list: " + quizQuestions.size());
+        Log.d(TAG, "═══════════════════════════════════════════════════");
 
+        // FIXED: Proper bounds checking
         if (currentQuestionIndex >= quizQuestions.size()) {
+            Log.d(TAG, "Reached end of quiz (index " + currentQuestionIndex + " >= size " + quizQuestions.size() + ")");
             showQuizComplete();
             return;
         }
 
         QuizQuestion question = quizQuestions.get(currentQuestionIndex);
 
-        // Update UI
-        tvQuestionTitle.setText("Question " + question.questionNumber + " of " + quizQuestions.size());
+        // Display progress correctly
+        tvQuestionTitle.setText("Question " + (currentQuestionIndex + 1) + " of " + quizQuestions.size());
         tvQuestionText.setText("Where is this?");
 
-        // Load image
+        Log.d(TAG, "Displaying: Question " + (currentQuestionIndex + 1) + " of " + quizQuestions.size());
+
+        // FIXED: Load image with proper orientation handling
         loadImageFromUri(question.photoUri);
 
-        // Set answers
         if (question.allAnswers.size() >= 4) {
             btnAnswerA.setText(question.allAnswers.get(0));
             btnAnswerB.setText(question.allAnswers.get(1));
@@ -442,20 +430,19 @@ public class PatientQuizFragment extends Fragment {
             btnAnswerD.setText(question.allAnswers.get(3));
         }
 
-        // Reset button states
         resetButtonStates();
 
-        // Hide feedback and next button
         tvFeedback.setVisibility(View.GONE);
         btnNextQuestion.setVisibility(View.GONE);
 
-        // Reset answered flag
         currentQuestionAnswered = false;
 
-        // Update score
         updateScore();
     }
 
+    /**
+     * FIXED: Load image with proper orientation and color for quiz
+     */
     private void loadImageFromUri(String uriString) {
         if (!isAdded() || getContext() == null) {
             return;
@@ -466,9 +453,26 @@ public class PatientQuizFragment extends Fragment {
             InputStream inputStream = getContext().getContentResolver().openInputStream(uri);
 
             if (inputStream != null) {
-                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                ivQuestionImage.setImageBitmap(bitmap);
+                // FIXED: Decode with proper color configuration (same as video)
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+                options.inPremultiplied = true;
+                options.inDither = false;
+
+                Bitmap bitmap = BitmapFactory.decodeStream(inputStream, null, options);
                 inputStream.close();
+
+                if (bitmap != null) {
+                    // FIXED: Convert horizontal images to vertical like in videos
+                    Bitmap orientedBitmap = convertToPortraitForQuiz(bitmap);
+                    ivQuestionImage.setImageBitmap(orientedBitmap);
+
+                    if (orientedBitmap != bitmap) {
+                        bitmap.recycle();
+                    }
+                } else {
+                    ivQuestionImage.setImageResource(android.R.drawable.ic_menu_gallery);
+                }
             } else {
                 ivQuestionImage.setImageResource(android.R.drawable.ic_menu_gallery);
             }
@@ -478,11 +482,33 @@ public class PatientQuizFragment extends Fragment {
         }
     }
 
+    /**
+     * FIXED: Convert horizontal images to vertical for quiz display
+     * Same logic as video generation for consistency
+     */
+    private Bitmap convertToPortraitForQuiz(Bitmap bitmap) {
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+
+        // If already portrait or square, return as is
+        if (height >= width) {
+            return bitmap;
+        }
+
+        // Image is horizontal - rotate 90 degrees clockwise
+        Log.d(TAG, "Converting landscape quiz image to portrait: " + width + "x" + height);
+
+        Matrix matrix = new Matrix();
+        matrix.postRotate(90);
+        Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, true);
+
+        return rotated;
+    }
+
     private void checkAnswer(Button clickedButton, String selectedAnswer) {
         QuizQuestion question = quizQuestions.get(currentQuestionIndex);
 
         if (selectedAnswer.equals(question.correctAnswer)) {
-            // CORRECT
             clickedButton.setBackgroundColor(Color.rgb(76, 175, 80));
             clickedButton.setTextColor(Color.WHITE);
 
@@ -501,7 +527,6 @@ public class PatientQuizFragment extends Fragment {
             }
 
         } else {
-            // WRONG
             clickedButton.setBackgroundColor(Color.rgb(244, 67, 54));
             clickedButton.setTextColor(Color.WHITE);
 
@@ -530,13 +555,14 @@ public class PatientQuizFragment extends Fragment {
     }
 
     private void updateScore() {
+        // FIXED: Display score out of actual quiz size (not unlimited)
         tvScore.setText("Score: " + correctAnswers + "/" + quizQuestions.size());
     }
 
     private void showQuizComplete() {
-        Log.d(TAG, "════════════════════════════════════════════════════");
+        Log.d(TAG, "═══════════════════════════════════════════════════");
         Log.d(TAG, "        QUIZ COMPLETED");
-        Log.d(TAG, "════════════════════════════════════════════════════");
+        Log.d(TAG, "═══════════════════════════════════════════════════");
 
         tvQuestionTitle.setText("Quiz Complete!");
         tvQuestionText.setText("");
@@ -565,19 +591,16 @@ public class PatientQuizFragment extends Fragment {
         tvFeedback.setTextColor(Color.rgb(33, 150, 243));
         tvFeedback.setVisibility(View.VISIBLE);
 
-        // Mark quiz as completed today
         prefs.edit()
                 .putBoolean(KEY_QUIZ_COMPLETED_TODAY, true)
                 .apply();
 
         Log.d(TAG, "Score: " + correctAnswers + "/" + quizQuestions.size() + " (" + String.format("%.0f", percentage) + "%)");
         Log.d(TAG, "Quiz marked as completed for today");
-        Log.d(TAG, "════════════════════════════════════════════════════");
+        Log.d(TAG, "═══════════════════════════════════════════════════");
 
-        // Hide next button (quiz is done for today)
         btnNextQuestion.setVisibility(View.GONE);
 
-        // Save results
         saveQuizResults(percentage);
     }
 
@@ -601,7 +624,7 @@ public class PatientQuizFragment extends Fragment {
 
         quizRef.setValue(results)
                 .addOnSuccessListener(aVoid -> Log.d(TAG, "✓ Quiz results saved to Firebase"))
-                .addOnFailureListener(e -> Log.e(TAG, "❌ Failed to save quiz results", e));
+                .addOnFailureListener(e -> Log.e(TAG, "✗ Failed to save quiz results", e));
     }
 
     private static class QuizQuestion {
