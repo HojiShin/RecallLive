@@ -32,7 +32,7 @@ import java.util.concurrent.Executors;
  */
 public class VideoGenerationService {
     private static final String TAG = "VideoGenerationService";
-    private static final String GEMINI_API_KEY = "AIzaSyCUbn35CX0VowtVcx5e1HN2Yj41c3o0G2E";
+    private static final String GEMINI_API_KEY = BuildConfig.API_KEY;
     private static final int IMAGES_PER_VIDEO = 3;
 
     private final Context context;
