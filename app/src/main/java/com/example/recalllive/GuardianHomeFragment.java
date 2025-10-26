@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -52,6 +53,8 @@ public class GuardianHomeFragment extends Fragment {
     private CardView cardFacialExpression;
     private BarChart emotionBarChart;
     private TextView tvExplanation;
+    private FrameLayout graphContainer;
+    private TextView tvPlaceholder;
 
     private String linkedPatientUid;
     private List<VideoEmotionData> videoEmotionList;
@@ -93,12 +96,14 @@ public class GuardianHomeFragment extends Fragment {
         videoRecyclerView = view.findViewById(R.id.rv_videos_emotions);
         cardFacialExpression = view.findViewById(R.id.card_quiz_score);
         tvExplanation = view.findViewById(R.id.tv_explanation);
+        graphContainer = view.findViewById(R.id.graph_container);
+        tvPlaceholder = view.findViewById(R.id.tv_quiz_placeholder);
 
         // Setup video list
         setupVideoRecyclerView();
 
         // Setup emotion chart
-        setupEmotionChart(view);
+        setupEmotionChart();
 
         // Load data
         if (linkedPatientUid != null) {
@@ -118,25 +123,32 @@ public class GuardianHomeFragment extends Fragment {
         videoRecyclerView.setAdapter(videoEmotionAdapter);
     }
 
-    private void setupEmotionChart(View view) {
-        ViewGroup cardContent = (ViewGroup) cardFacialExpression.getChildAt(0);
-        TextView placeholder = cardContent.findViewById(R.id.tv_quiz_placeholder);
-        if (placeholder != null) {
-            placeholder.setVisibility(View.GONE);
+    private void setupEmotionChart() {
+        // Hide placeholder initially
+        if (tvPlaceholder != null) {
+            tvPlaceholder.setVisibility(View.VISIBLE);
         }
 
+        // Create the chart
         emotionBarChart = new BarChart(requireContext());
-        emotionBarChart.setLayoutParams(new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
-        emotionBarChart.setPadding(8, 8, 8, 8);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT);
+        emotionBarChart.setLayoutParams(params);
+
+        // Configure chart
         emotionBarChart.getDescription().setEnabled(false);
         emotionBarChart.setDrawGridBackground(false);
         emotionBarChart.setTouchEnabled(true);
         emotionBarChart.setDragEnabled(true);
         emotionBarChart.setScaleEnabled(true);
+        emotionBarChart.setPinchZoom(false);
+        emotionBarChart.setDrawBarShadow(false);
+        emotionBarChart.setDrawValueAboveBar(true);
 
-        cardContent.addView(emotionBarChart);
+        // Add chart to container
+        graphContainer.addView(emotionBarChart);
+        emotionBarChart.setVisibility(View.GONE); // Hide until data loads
     }
 
     private void loadPatientVideosWithEmotions() {
@@ -175,6 +187,7 @@ public class GuardianHomeFragment extends Fragment {
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Failed to load videos", e);
+                    Toast.makeText(getContext(), "Failed to load videos", Toast.LENGTH_SHORT).show();
                 });
     }
 
@@ -278,6 +291,12 @@ public class GuardianHomeFragment extends Fragment {
     }
 
     private void updateEmotionChart(Map<String, Integer> emotions) {
+        // Hide placeholder and show chart
+        if (tvPlaceholder != null) {
+            tvPlaceholder.setVisibility(View.GONE);
+        }
+        emotionBarChart.setVisibility(View.VISIBLE);
+
         List<BarEntry> entries = new ArrayList<>();
         List<String> labels = new ArrayList<>();
 
@@ -290,7 +309,7 @@ public class GuardianHomeFragment extends Fragment {
             labels.add(emotion);
         }
 
-        BarDataSet dataSet = new BarDataSet(entries, "Facial Expressions During Videos");
+        BarDataSet dataSet = new BarDataSet(entries, "Facial Expressions");
 
         List<Integer> colors = new ArrayList<>();
         colors.add(Color.rgb(76, 175, 80));   // Happy - Green
@@ -303,57 +322,70 @@ public class GuardianHomeFragment extends Fragment {
 
         dataSet.setColors(colors);
         dataSet.setValueTextSize(12f);
-        dataSet.setValueTextColor(Color.BLACK);
+        dataSet.setValueTextColor(Color.WHITE);
 
         BarData barData = new BarData(dataSet);
-        barData.setBarWidth(0.8f);
+        barData.setBarWidth(0.7f);
 
         emotionBarChart.setData(barData);
+        emotionBarChart.setFitBars(true);
 
+        // X-Axis configuration
         XAxis xAxis = emotionBarChart.getXAxis();
         xAxis.setValueFormatter(new IndexAxisValueFormatter(labels));
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setGranularity(1f);
         xAxis.setGranularityEnabled(true);
         xAxis.setDrawGridLines(false);
-        xAxis.setTextSize(10f);
+        xAxis.setTextSize(11f);
+        xAxis.setTextColor(Color.WHITE);
+        xAxis.setLabelRotationAngle(0f);
+        xAxis.setYOffset(5f);
 
+        // Left Y-Axis configuration
         emotionBarChart.getAxisLeft().setAxisMinimum(0f);
+        emotionBarChart.getAxisLeft().setTextColor(Color.WHITE);
+        emotionBarChart.getAxisLeft().setTextSize(11f);
+        emotionBarChart.getAxisLeft().setDrawGridLines(true);
+        emotionBarChart.getAxisLeft().setGridColor(Color.argb(50, 255, 255, 255));
+
+        // Right Y-Axis
         emotionBarChart.getAxisRight().setEnabled(false);
 
+        // Legend configuration
+        emotionBarChart.getLegend().setTextColor(Color.WHITE);
+        emotionBarChart.getLegend().setTextSize(12f);
+
+        // Add extra spacing
+        emotionBarChart.setExtraOffsets(5f, 10f, 5f, 10f);
+
+        emotionBarChart.animateY(1000);
         emotionBarChart.invalidate();
 
         Log.d(TAG, "Chart updated with emotion data");
     }
 
     private void updateChartWithPlaceholder() {
-        List<BarEntry> entries = new ArrayList<>();
-        List<String> labels = new ArrayList<>();
-
-        String[] emotionOrder = {"Happy", "Neutral", "Surprise", "Sad", "Angry", "Fear", "Disgust"};
-
-        for (int i = 0; i < emotionOrder.length; i++) {
-            entries.add(new BarEntry(i, 0));
-            labels.add(emotionOrder[i]);
+        // Show placeholder
+        if (tvPlaceholder != null) {
+            tvPlaceholder.setVisibility(View.VISIBLE);
+            tvPlaceholder.setText("📊 No emotion data yet\n\nStart watching videos to see analysis");
         }
+        emotionBarChart.setVisibility(View.GONE);
 
-        BarDataSet dataSet = new BarDataSet(entries, "No Data Yet");
-        dataSet.setColor(Color.LTGRAY);
-
-        BarData barData = new BarData(dataSet);
-        emotionBarChart.setData(barData);
-
-        XAxis xAxis = emotionBarChart.getXAxis();
-        xAxis.setValueFormatter(new IndexAxisValueFormatter(labels));
-        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-
-        emotionBarChart.invalidate();
+        // Also update explanation
+        tvExplanation.setText("No emotion data available yet. Emotion tracking will appear here once you start watching videos.");
     }
 
     private void updateExplanation(Map<String, Integer> emotions, int videoCount) {
         int totalEmotions = 0;
         for (int count : emotions.values()) {
             totalEmotions += count;
+        }
+
+        if (totalEmotions == 0) {
+            tvExplanation.setText("No emotions detected yet. Start watching videos to see analysis.");
+            return;
         }
 
         String mostCommonEmotion = "";
@@ -399,7 +431,6 @@ public class GuardianHomeFragment extends Fragment {
         tvExplanation.setText(explanation);
     }
 
-    // FIXED: This method now correctly passes all required arguments
     private void onVideoClick(VideoEmotionData video) {
         Log.d(TAG, "══════════════════════════════════════");
         Log.d(TAG, "VIDEO CLICK - Opening Guardian Viewer");

@@ -38,6 +38,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class AutomaticVideoService {
     private static final String TAG = "AutomaticVideoService";
     private static final String PREFS_NAME = "RecallLiveVideoPrefs";
@@ -48,6 +50,7 @@ public class AutomaticVideoService {
     private static final int MAX_VIDEOS_PER_DAY = VideoConfiguration.MAX_VIDEOS_PER_DAY;
     private static final boolean ENABLE_AUTO_CLEANUP = VideoConfiguration.ENABLE_AUTO_CLEANUP;
     private static final boolean ENABLE_TTS = VideoConfiguration.ENABLE_TTS_NARRATION;
+
     private final Context context;
     private final SharedPreferences prefs;
     private final WorkManager workManager;
@@ -64,100 +67,201 @@ public class AutomaticVideoService {
         this.ttsGenerator = new TTSVideoGenerator(context);
     }
 
-    public void initializeForPatient(String patientUid, boolean isSignup) {
-        Log.d(TAG, "╔══════════════════════════════════════════════════╗");
+    public void initializeForPatient(String patientUid, boolean isSignupOrLogin) {
+        Log.d(TAG, "╔═══════════════════════════════════════════╗");
         Log.d(TAG, "  INITIALIZING VIDEO SERVICE");
         Log.d(TAG, "  Patient: " + patientUid);
-        Log.d(TAG, "  Trigger: " + (isSignup ? "SIGNUP" : "LOGIN"));
+        Log.d(TAG, "  Trigger: " + (isSignupOrLogin ? "SIGNUP/LOGIN" : "BACKGROUND"));
         Log.d(TAG, "  TTS Enabled: " + ENABLE_TTS);
         Log.d(TAG, "  Max videos/day: " + MAX_VIDEOS_PER_DAY);
-        Log.d(TAG, "╚══════════════════════════════════════════════════╝");
+        Log.d(TAG, "╚═══════════════════════════════════════════╝");
 
         // Check if new day first
         String today = getTodayDateString();
         String lastDate = getLastVideoDate();
 
         if (!today.equals(lastDate)) {
-            Log.d(TAG, "🔄 New day detected - resetting counters BEFORE verification");
+            Log.d(TAG, "🔄 New day detected - cleaning up and resetting");
+
+            // CLEANUP OLD VIDEOS FIRST
+            if (ENABLE_AUTO_CLEANUP) {
+                cleanupOldVideos(patientUid);
+            }
+
+            // Reset counters
             resetDailyCount();
             clearGeneratedClusters();
         }
 
-        // CRITICAL FIX: Verify actual video count in Firestore BEFORE checking limit
-        verifyAndSyncVideoCount(patientUid, isSignup);
-    }
-
-    private void verifyAndSyncVideoCount(String patientUid, boolean isSignup) {
-        String today = getTodayDateString();
-        Log.d(TAG, "🔍 Verifying actual video count for today: " + today);
-
-        Calendar todayStart = Calendar.getInstance();
-        todayStart.set(Calendar.HOUR_OF_DAY, 0);
-        todayStart.set(Calendar.MINUTE, 0);
-        todayStart.set(Calendar.SECOND, 0);
-        todayStart.set(Calendar.MILLISECOND, 0);
-
-        firestore.collection("memory_videos")
-                .whereEqualTo("patientUid", patientUid)
-                .whereGreaterThanOrEqualTo("createdAt", new com.google.firebase.Timestamp(todayStart.getTimeInMillis() / 1000, 0))
-                .get()
-                .addOnSuccessListener(querySnapshot -> {
-                    int actualCount = querySnapshot.size();
-                    int storedCount = prefs.getInt(KEY_DAILY_VIDEO_COUNT, 0);
-
-                    Log.d(TAG, "═══════════════════════════════════════════════");
-                    Log.d(TAG, "VIDEO COUNT VERIFICATION");
-                    Log.d(TAG, "Stored count: " + storedCount);
-                    Log.d(TAG, "Actual Firestore count: " + actualCount);
-                    Log.d(TAG, "═══════════════════════════════════════════════");
-
-                    // CRITICAL: Update the stored count to match reality
-                    if (actualCount != storedCount) {
-                        Log.d(TAG, "⚠️ COUNT MISMATCH - Syncing to actual: " + actualCount);
-                        prefs.edit()
-                                .putString(KEY_LAST_VIDEO_DATE, today)
-                                .putInt(KEY_DAILY_VIDEO_COUNT, actualCount)
-                                .apply();
-                    }
-
-                    // Continue with VERIFIED count
-                    continueInitialization(patientUid, isSignup, actualCount);
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "❌ Failed to verify video count: " + e.getMessage());
-                    Log.d(TAG, "⚠️ Resetting count to 0 due to verification failure");
-
-                    // On failure, reset to 0 to be safe
-                    prefs.edit()
-                            .putString(KEY_LAST_VIDEO_DATE, getTodayDateString())
-                            .putInt(KEY_DAILY_VIDEO_COUNT, 0)
-                            .apply();
-
-                    continueInitialization(patientUid, isSignup, 0);
-                });
-    }
-
-    private void continueInitialization(String patientUid, boolean isSignup, int verifiedCount) {
-        Log.d(TAG, "📊 Continuing with verified count: " + verifiedCount + "/" + MAX_VIDEOS_PER_DAY);
-
-        if (verifiedCount >= MAX_VIDEOS_PER_DAY) {
-            Log.d(TAG, "⚠️ Daily video limit reached (" + verifiedCount + "/" + MAX_VIDEOS_PER_DAY + ")");
-            Log.d(TAG, "Scheduling daily generation for tomorrow");
-            scheduleDailyVideoGeneration(patientUid);
-            return;
+        // GENERATE 10 VIDEOS on signup/login
+        if (isSignupOrLogin) {
+            Log.d(TAG, "🎬 SIGNUP/LOGIN DETECTED - Generating " + MAX_VIDEOS_PER_DAY + " videos");
+            generateMultipleVideosForPatient(patientUid, MAX_VIDEOS_PER_DAY, "signup_login");
         }
 
-        Log.d(TAG, "✓ Proceeding with video generation");
+        // Schedule daily video generation at midnight
+        scheduleDailyVideoGeneration(patientUid);
+    }
+
+    /**
+     * UPDATED: Generate multiple videos at once
+     */
+    private void generateMultipleVideosForPatient(String patientUid, int videosToGenerate, String triggerType) {
+        Log.d(TAG, "═══════════════════════════════════════════");
+        Log.d(TAG, "GENERATING " + videosToGenerate + " VIDEOS");
+        Log.d(TAG, "Patient: " + patientUid);
+        Log.d(TAG, "Trigger: " + triggerType);
+        Log.d(TAG, "═══════════════════════════════════════════");
 
         AppExecutors.getInstance().networkIO().execute(() -> {
             try {
-                generateVideoForPatient(patientUid, isSignup ? "signup" : "login");
+                Log.d(TAG, "📂 Step 1: Loading photo clusters...");
+                FirebaseClusterManager clusterManager = new FirebaseClusterManager(context, patientUid);
+
+                clusterManager.getClusters(new FirebaseClusterManager.OnClustersRetrievedCallback() {
+                    @Override
+                    public void onClustersRetrieved(List<PhotoClusteringManager.PhotoCluster> clusters) {
+                        if (clusters == null || clusters.isEmpty()) {
+                            Log.e(TAG, "❌ No clusters found");
+                            return;
+                        }
+                        Log.d(TAG, "✓ Found " + clusters.size() + " clusters");
+                        Log.d(TAG, "🌍 Step 2: Geocoding locations...");
+
+                        geocodeClustersAndGenerateMultiple(clusters, patientUid, triggerType, videosToGenerate);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        Log.e(TAG, "❌ Failed to load clusters: " + error);
+                    }
+                });
             } catch (Exception e) {
-                Log.e(TAG, "❌ Error in video generation", e);
+                Log.e(TAG, "❌ Exception in generateMultipleVideosForPatient", e);
             }
         });
+    }
 
-        scheduleDailyVideoGeneration(patientUid);
+    private void geocodeClustersAndGenerateMultiple(List<PhotoClusteringManager.PhotoCluster> clusters,
+                                                    String patientUid, String triggerType, int videosToGenerate) {
+        geocoder.geocodeClusters(clusters, new LocationGeocoderService.ClusterGeocodeCallback() {
+            @Override
+            public void onProgress(int processed, int total) {
+                if (processed % 5 == 0) {
+                    Log.d(TAG, "  Geocoding: " + processed + "/" + total);
+                }
+            }
+
+            @Override
+            public void onComplete(List<PhotoClusteringManager.PhotoCluster> geocodedClusters) {
+                Log.d(TAG, "✓ Geocoding complete");
+                Log.d(TAG, "🎯 Step 3: Generating " + videosToGenerate + " videos...");
+
+                // Get available clusters (not already used today)
+                List<PhotoClusteringManager.PhotoCluster> availableClusters = getAvailableClusters(geocodedClusters);
+
+                if (availableClusters.isEmpty()) {
+                    Log.w(TAG, "⚠️ No available clusters - resetting and using all clusters");
+                    clearGeneratedClusters();
+                    availableClusters = new ArrayList<>(geocodedClusters);
+                }
+
+                int videosToCreate = Math.min(videosToGenerate, availableClusters.size());
+                Log.d(TAG, "Creating " + videosToCreate + " videos from " + availableClusters.size() + " available clusters");
+
+                AtomicInteger completedVideos = new AtomicInteger(0);
+                AtomicInteger failedVideos = new AtomicInteger(0);
+
+                // Generate videos sequentially to avoid overwhelming the system
+                for (int i = 0; i < videosToCreate; i++) {
+                    PhotoClusteringManager.PhotoCluster selectedCluster = selectRandomCluster(availableClusters);
+
+                    if (selectedCluster == null) {
+                        Log.w(TAG, "⚠️ No more clusters available");
+                        break;
+                    }
+
+                    // Remove from available list so we don't use it again
+                    availableClusters.remove(selectedCluster);
+
+                    final int videoNumber = i + 1;
+                    Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    Log.d(TAG, "📹 VIDEO " + videoNumber + "/" + videosToCreate);
+                    Log.d(TAG, "Cluster: " + selectedCluster.getClusterId());
+                    Log.d(TAG, "Location: " + selectedCluster.getLocationName());
+                    Log.d(TAG, "Photos: " + selectedCluster.getPhotoCount());
+                    Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+                    if (ENABLE_TTS) {
+                        generateVideoWithTTS(selectedCluster, patientUid, triggerType, new VideoCompletionCallback() {
+                            @Override
+                            public void onComplete(boolean success) {
+                                if (success) {
+                                    completedVideos.incrementAndGet();
+                                } else {
+                                    failedVideos.incrementAndGet();
+                                }
+
+                                int total = completedVideos.get() + failedVideos.get();
+                                Log.d(TAG, "Progress: " + total + "/" + videosToCreate +
+                                        " (✓ " + completedVideos.get() + " | ✗ " + failedVideos.get() + ")");
+                            }
+                        });
+                    } else {
+                        generateSilentVideo(selectedCluster, patientUid, triggerType, new VideoCompletionCallback() {
+                            @Override
+                            public void onComplete(boolean success) {
+                                if (success) {
+                                    completedVideos.incrementAndGet();
+                                } else {
+                                    failedVideos.incrementAndGet();
+                                }
+
+                                int total = completedVideos.get() + failedVideos.get();
+                                Log.d(TAG, "Progress: " + total + "/" + videosToCreate +
+                                        " (✓ " + completedVideos.get() + " | ✗ " + failedVideos.get() + ")");
+                            }
+                        });
+                    }
+
+                    // Add small delay between videos to prevent overwhelming the system
+                    try {
+                        Thread.sleep(1000); // 1 second delay
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+    }
+
+    private interface VideoCompletionCallback {
+        void onComplete(boolean success);
+    }
+
+    private List<PhotoClusteringManager.PhotoCluster> getAvailableClusters(List<PhotoClusteringManager.PhotoCluster> allClusters) {
+        Set<String> usedClusters = getGeneratedClusters();
+        List<PhotoClusteringManager.PhotoCluster> available = new ArrayList<>();
+
+        for (PhotoClusteringManager.PhotoCluster cluster : allClusters) {
+            if (cluster.getPhotoCount() >= 1 && !usedClusters.contains(cluster.getClusterId())) {
+                available.add(cluster);
+            }
+        }
+
+        return available;
+    }
+
+    private PhotoClusteringManager.PhotoCluster selectRandomCluster(List<PhotoClusteringManager.PhotoCluster> clusters) {
+        if (clusters.isEmpty()) return null;
+
+        // Sort by photo count (prefer clusters with more photos)
+        clusters.sort((a, b) -> b.getPhotoCount() - a.getPhotoCount());
+
+        // Randomly select from top 5 clusters (or all if less than 5)
+        Random random = new Random();
+        int topChoices = Math.min(5, clusters.size());
+        return clusters.get(random.nextInt(topChoices));
     }
 
     private void scheduleDailyVideoGeneration(String patientUid) {
@@ -191,117 +295,32 @@ public class AutomaticVideoService {
         Log.d(TAG, "✓ Daily generation scheduled for: " + targetTime.getTime());
     }
 
-    public void generateVideoForPatient(String patientUid, String triggerType) {
-        Log.d(TAG, "═══════════════════════════════════════════════════");
-        Log.d(TAG, "GENERATING VIDEO FOR PATIENT");
-        Log.d(TAG, "Patient: " + patientUid);
-        Log.d(TAG, "Trigger: " + triggerType);
-        Log.d(TAG, "═══════════════════════════════════════════════════");
-
-        try {
-            Log.d(TAG, "📂 Step 1: Loading photo clusters...");
-            FirebaseClusterManager clusterManager = new FirebaseClusterManager(context, patientUid);
-
-            clusterManager.getClusters(new FirebaseClusterManager.OnClustersRetrievedCallback() {
-                @Override
-                public void onClustersRetrieved(List<PhotoClusteringManager.PhotoCluster> clusters) {
-                    if (clusters == null || clusters.isEmpty()) {
-                        Log.e(TAG, "❌ No clusters found");
-                        return;
-                    }
-                    Log.d(TAG, "✓ Found " + clusters.size() + " clusters");
-                    Log.d(TAG, "🌍 Step 2: Geocoding locations...");
-                    geocodeClustersAndGenerate(clusters, patientUid, triggerType);
-                }
-
-                @Override
-                public void onError(String error) {
-                    Log.e(TAG, "❌ Failed to load clusters: " + error);
-                }
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Exception in generateVideoForPatient", e);
-        }
-    }
-
-    private void geocodeClustersAndGenerate(List<PhotoClusteringManager.PhotoCluster> clusters, String patientUid, String triggerType) {
-        geocoder.geocodeClusters(clusters, new LocationGeocoderService.ClusterGeocodeCallback() {
-            @Override
-            public void onProgress(int processed, int total) {
-                if (processed % 5 == 0) {
-                    Log.d(TAG, "  Geocoding: " + processed + "/" + total);
-                }
-            }
-
-            @Override
-            public void onComplete(List<PhotoClusteringManager.PhotoCluster> geocodedClusters) {
-                Log.d(TAG, "✓ Geocoding complete");
-                Log.d(TAG, "🎯 Step 3: Selecting cluster for video...");
-
-                PhotoClusteringManager.PhotoCluster selectedCluster = selectClusterForVideo(geocodedClusters);
-
-                if (selectedCluster == null || selectedCluster.getPhotoCount() < 1) {
-                    Log.e(TAG, "❌ No suitable cluster found");
-                    return;
-                }
-
-                Log.d(TAG, "✓ Selected: " + selectedCluster.getClusterId());
-                Log.d(TAG, "  Location: " + selectedCluster.getLocationName());
-                Log.d(TAG, "  Photos: " + selectedCluster.getPhotoCount());
-
-                if (ENABLE_TTS) {
-                    Log.d(TAG, "🎤 Step 4: Generating video WITH TTS...");
-                    generateVideoWithTTS(selectedCluster, patientUid, triggerType);
-                } else {
-                    Log.d(TAG, "🎬 Step 4: Generating SILENT video...");
-                    generateSilentVideo(selectedCluster, patientUid, triggerType);
-                }
-            }
-        });
-    }
-
-    private void generateVideoWithTTS(PhotoClusteringManager.PhotoCluster cluster, String patientUid, String triggerType) {
-        Log.d(TAG, "═══════════════════════════════════════════════════");
-        Log.d(TAG, "VIDEO GENERATION WITH TTS AUDIO");
-        Log.d(TAG, "═══════════════════════════════════════════════════");
-
+    private void generateVideoWithTTS(PhotoClusteringManager.PhotoCluster cluster, String patientUid,
+                                      String triggerType, VideoCompletionCallback callback) {
         ttsGenerator.generateCompleteNarration(cluster, new TTSVideoGenerator.TTSGenerationCallback() {
             @Override
             public void onAudioGenerated(String audioFilePath, int durationSeconds) {
-                Log.d(TAG, "╔══════════════════════════════════════════════╗");
-                Log.d(TAG, "   ✓ TTS AUDIO GENERATED");
-                Log.d(TAG, "╚══════════════════════════════════════════════╝");
-                Log.d(TAG, "Audio: " + audioFilePath);
-                Log.d(TAG, "Duration: " + durationSeconds + "s");
-
                 final File audioFile = new File(audioFilePath);
-
-                Log.d(TAG, "🎬 Generating silent video...");
                 Media3VideoGenerator videoGen = new Media3VideoGenerator(context, patientUid);
 
                 videoGen.generateVideoFromCluster(cluster, durationSeconds, new Media3VideoGenerator.VideoGenerationCallback() {
                     @Override
                     public void onSuccess(String videoUrl, String documentId) {
-                        Log.d(TAG, "✓ Silent video generated");
-                        Log.d(TAG, "🔗 Merging audio + video...");
-
                         VideoAudioMerger.mergeVideoWithAudio(context, videoUrl, audioFile, patientUid, new VideoAudioMerger.MergeCallback() {
                             @Override
                             public void onMergeComplete(String mergedVideoUrl) {
-                                Log.d(TAG, "╔══════════════════════════════════════════════╗");
-                                Log.d(TAG, "  ✓✓✓ VIDEO WITH AUDIO COMPLETE ✓✓✓");
-                                Log.d(TAG, "╚══════════════════════════════════════════════╝");
                                 updateVideoUrl(documentId, mergedVideoUrl);
                                 completeVideoGeneration(patientUid, documentId, triggerType, cluster.getClusterId(), mergedVideoUrl);
                                 audioFile.delete();
+                                if (callback != null) callback.onComplete(true);
                             }
 
                             @Override
                             public void onMergeError(String error) {
                                 Log.e(TAG, "❌ Merge failed: " + error);
-                                Log.d(TAG, "⚠️ Using silent video");
                                 completeVideoGeneration(patientUid, documentId, triggerType, cluster.getClusterId(), videoUrl);
                                 audioFile.delete();
+                                if (callback != null) callback.onComplete(true);
                             }
                         });
                     }
@@ -311,6 +330,7 @@ public class AutomaticVideoService {
                         Log.e(TAG, "❌ Video generation failed: " + error);
                         recordVideoGenerationFailure(patientUid, error, triggerType);
                         audioFile.delete();
+                        if (callback != null) callback.onComplete(false);
                     }
                 });
             }
@@ -318,35 +338,27 @@ public class AutomaticVideoService {
             @Override
             public void onError(String error) {
                 Log.e(TAG, "❌ TTS failed: " + error);
-                Log.d(TAG, "⚠️ Falling back to silent video");
-                generateSilentVideo(cluster, patientUid, triggerType);
+                generateSilentVideo(cluster, patientUid, triggerType, callback);
             }
         });
     }
 
-    private void generateSilentVideo(PhotoClusteringManager.PhotoCluster cluster, String patientUid, String triggerType) {
-        Log.d(TAG, "═══════════════════════════════════════════════════");
-        Log.d(TAG, "GENERATING SILENT VIDEO");
-        Log.d(TAG, "═══════════════════════════════════════════════════");
-
+    private void generateSilentVideo(PhotoClusteringManager.PhotoCluster cluster, String patientUid,
+                                     String triggerType, VideoCompletionCallback callback) {
         Media3VideoGenerator generator = new Media3VideoGenerator(context, patientUid);
 
         generator.generateVideoFromCluster(cluster, 0, new Media3VideoGenerator.VideoGenerationCallback() {
             @Override
             public void onSuccess(String videoUrl, String documentId) {
-                Log.d(TAG, "╔══════════════════════════════════════════════╗");
-                Log.d(TAG, "   ✓ SILENT VIDEO COMPLETE");
-                Log.d(TAG, "╚══════════════════════════════════════════════╝");
                 completeVideoGeneration(patientUid, documentId, triggerType, cluster.getClusterId(), videoUrl);
+                if (callback != null) callback.onComplete(true);
             }
 
             @Override
             public void onError(String error) {
-                Log.e(TAG, "╔══════════════════════════════════════════════╗");
-                Log.e(TAG, "  ❌ VIDEO GENERATION FAILED");
-                Log.e(TAG, "╚══════════════════════════════════════════════╝");
-                Log.e(TAG, "Error: " + error);
+                Log.e(TAG, "❌ Video generation failed: " + error);
                 recordVideoGenerationFailure(patientUid, error, triggerType);
+                if (callback != null) callback.onComplete(false);
             }
         });
     }
@@ -358,59 +370,21 @@ public class AutomaticVideoService {
     }
 
     private void completeVideoGeneration(String patientUid, String documentId, String triggerType, String clusterId, String videoUrl) {
-        Log.d(TAG, "═══════════════════════════════════════════════════");
-        Log.d(TAG, "FINALIZING VIDEO");
-        Log.d(TAG, "Document: " + documentId);
-        Log.d(TAG, "URL: " + videoUrl);
-        Log.d(TAG, "═══════════════════════════════════════════════════");
-
         recordVideoGeneration(patientUid, documentId, triggerType, clusterId);
         incrementDailyCount();
         markClusterAsGenerated(clusterId);
-        notifyPatientOfNewVideo(patientUid, videoUrl);
 
-        Log.d(TAG, "╔══════════════════════════════════════════════╗");
-        Log.d(TAG, "  ✓✓✓ ALL COMPLETE ✓✓✓");
-        Log.d(TAG, "╚══════════════════════════════════════════════╝");
+        int currentCount = getTodayVideoCount();
+        Log.d(TAG, "✓ Video complete (" + currentCount + "/" + MAX_VIDEOS_PER_DAY + ")");
     }
 
-    private PhotoClusteringManager.PhotoCluster selectClusterForVideo(List<PhotoClusteringManager.PhotoCluster> clusters) {
-        if (clusters == null || clusters.isEmpty()) return null;
-
-        Set<String> generatedClusters = getGeneratedClusters();
-        List<PhotoClusteringManager.PhotoCluster> availableClusters = new ArrayList<>();
-
-        for (PhotoClusteringManager.PhotoCluster cluster : clusters) {
-            if (cluster.getPhotoCount() >= 1 && !generatedClusters.contains(cluster.getClusterId())) {
-                availableClusters.add(cluster);
-            }
-        }
-
-        if (availableClusters.isEmpty()) {
-            for (PhotoClusteringManager.PhotoCluster cluster : clusters) {
-                if (cluster.getPhotoCount() >= 1) {
-                    availableClusters.add(cluster);
-                }
-            }
-        }
-
-        if (availableClusters.isEmpty()) return null;
-
-        availableClusters.sort((a, b) -> {
-            int countDiff = b.getPhotoCount() - a.getPhotoCount();
-            if (countDiff != 0) return countDiff;
-            return Long.compare(b.getEndTime(), a.getEndTime());
-        });
-
-        Random random = new Random();
-        int topChoices = Math.min(3, availableClusters.size());
-        return availableClusters.get(random.nextInt(topChoices));
-    }
-
+    /**
+     * UPDATED: Delete ALL videos from previous days, keep only today's
+     */
     public void cleanupOldVideos(String patientUid) {
-        Log.d(TAG, "═══════════════════════════════════════════════════");
-        Log.d(TAG, "CLEANING UP OLD VIDEOS");
-        Log.d(TAG, "═══════════════════════════════════════════════════");
+        Log.d(TAG, "═══════════════════════════════════════════");
+        Log.d(TAG, "CLEANING UP OLD VIDEOS (Keeping only today's)");
+        Log.d(TAG, "═══════════════════════════════════════════");
 
         Calendar today = Calendar.getInstance();
         today.set(Calendar.HOUR_OF_DAY, 0);
@@ -428,11 +402,13 @@ public class AutomaticVideoService {
                     for (com.google.firebase.firestore.QueryDocumentSnapshot doc : querySnapshot) {
                         com.google.firebase.Timestamp createdAt = doc.getTimestamp("createdAt");
 
+                        // Delete if created BEFORE today
                         if (createdAt != null && createdAt.toDate().getTime() < todayStartTime) {
                             deleteCount++;
                             String videoUrl = doc.getString("videoUrl");
                             String docId = doc.getId();
 
+                            // Delete from Storage
                             if (videoUrl != null && !videoUrl.isEmpty()) {
                                 try {
                                     com.google.firebase.storage.FirebaseStorage.getInstance()
@@ -445,6 +421,7 @@ public class AutomaticVideoService {
                                 }
                             }
 
+                            // Delete from Firestore
                             doc.getReference().delete()
                                     .addOnSuccessListener(aVoid -> Log.d(TAG, "  ✓ Deleted firestore: " + docId))
                                     .addOnFailureListener(e -> Log.e(TAG, "  ❌ Firestore delete failed: " + docId));
@@ -454,7 +431,7 @@ public class AutomaticVideoService {
                     if (deleteCount == 0) {
                         Log.d(TAG, "✓ No old videos to clean");
                     } else {
-                        Log.d(TAG, "✓ CLEANUP COMPLETE: " + deleteCount + " videos");
+                        Log.d(TAG, "✓ CLEANUP COMPLETE: " + deleteCount + " old videos deleted");
                     }
                 })
                 .addOnFailureListener(e -> Log.e(TAG, "❌ Cleanup failed: " + e.getMessage()));
@@ -469,9 +446,7 @@ public class AutomaticVideoService {
         record.put("timestamp", FieldValue.serverTimestamp());
         record.put("success", true);
 
-        firestore.collection("video_generation_log").add(record)
-                .addOnSuccessListener(ref -> Log.d(TAG, "✓ Generation logged"))
-                .addOnFailureListener(e -> Log.e(TAG, "❌ Log failed", e));
+        firestore.collection("video_generation_log").add(record);
     }
 
     private void recordVideoGenerationFailure(String patientUid, String error, String triggerType) {
@@ -482,21 +457,7 @@ public class AutomaticVideoService {
         record.put("timestamp", FieldValue.serverTimestamp());
         record.put("success", false);
 
-        firestore.collection("video_generation_log").add(record)
-                .addOnSuccessListener(ref -> Log.d(TAG, "✓ Failure logged"))
-                .addOnFailureListener(e -> Log.e(TAG, "❌ Log failed", e));
-    }
-
-    private void notifyPatientOfNewVideo(String patientUid, String videoUrl) {
-        DatabaseReference patientRef = FirebaseDatabase.getInstance().getReference().child("Patient").child(patientUid);
-        Map<String, Object> updates = new HashMap<>();
-        updates.put("latestVideoUrl", videoUrl);
-        updates.put("latestVideoTimestamp", System.currentTimeMillis());
-        updates.put("hasNewVideo", true);
-
-        patientRef.updateChildren(updates)
-                .addOnSuccessListener(aVoid -> Log.d(TAG, "✓ Patient notified"))
-                .addOnFailureListener(e -> Log.e(TAG, "❌ Notify failed", e));
+        firestore.collection("video_generation_log").add(record);
     }
 
     private String getTodayDateString() {
@@ -520,7 +481,6 @@ public class AutomaticVideoService {
         String today = getTodayDateString();
         int count = getTodayVideoCount() + 1;
         prefs.edit().putString(KEY_LAST_VIDEO_DATE, today).putInt(KEY_DAILY_VIDEO_COUNT, count).apply();
-        Log.d(TAG, "✓ Count: " + count + "/" + MAX_VIDEOS_PER_DAY);
     }
 
     public void resetDailyCount() {
@@ -540,7 +500,6 @@ public class AutomaticVideoService {
         Set<String> clusters = getGeneratedClusters();
         clusters.add(clusterId);
         prefs.edit().putStringSet(KEY_GENERATED_CLUSTERS, clusters).apply();
-        Log.d(TAG, "✓ Cluster marked as generated: " + clusterId);
     }
 
     private void clearGeneratedClusters() {
@@ -555,6 +514,9 @@ public class AutomaticVideoService {
         Log.d(TAG, "✓ Service stopped");
     }
 
+    /**
+     * UPDATED: Daily worker now generates 10 videos and cleans up old ones
+     */
     public static class DailyVideoWorker extends Worker {
         private static final String TAG = "DailyVideoWorker";
 
@@ -571,20 +533,26 @@ public class AutomaticVideoService {
                 return Result.failure();
             }
 
-            Log.d(TAG, "═══════════════════════════════════════════════════");
-            Log.d(TAG, "DAILY VIDEO WORKER");
+            Log.d(TAG, "═══════════════════════════════════════════");
+            Log.d(TAG, "DAILY VIDEO WORKER - MIDNIGHT GENERATION");
             Log.d(TAG, "Patient: " + patientUid);
-            Log.d(TAG, "═══════════════════════════════════════════════════");
+            Log.d(TAG, "═══════════════════════════════════════════");
 
             try {
                 AutomaticVideoService service = new AutomaticVideoService(getApplicationContext());
-                service.resetDailyCount();
 
+                // Reset counters for new day
+                service.resetDailyCount();
+                service.clearGeneratedClusters();
+
+                // Clean up yesterday's videos
                 if (ENABLE_AUTO_CLEANUP) {
                     service.cleanupOldVideos(patientUid);
                 }
 
-                service.generateVideoForPatient(patientUid, "daily");
+                // Generate 10 new videos for today
+                service.generateMultipleVideosForPatient(patientUid, MAX_VIDEOS_PER_DAY, "daily_midnight");
+
                 Log.d(TAG, "✓ DAILY WORKER COMPLETE");
                 return Result.success();
             } catch (Exception e) {
@@ -594,4 +562,3 @@ public class AutomaticVideoService {
         }
     }
 }
-
