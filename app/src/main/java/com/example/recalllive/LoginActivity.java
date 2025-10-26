@@ -294,6 +294,7 @@ public class LoginActivity extends AppCompatActivity {
         }, 2000);
     }
 
+
     private boolean hasStoragePermission() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             return ContextCompat.checkSelfPermission(this,
