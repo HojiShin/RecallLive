@@ -285,7 +285,7 @@ public class LoginActivity extends AppCompatActivity {
 
         // Show progress message
         Toast.makeText(this,
-                "Generating 10 memory videos...",
+                "Generating memory videos...",
                 Toast.LENGTH_LONG).show();
 
         // Wait 2 seconds then navigate (give services time to start)
