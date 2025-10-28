@@ -402,5 +402,5 @@ This project is submitted for the Congressional App Challenge 2024.
 ## 📧 Contact
 
 For questions about this submission, please contact:
-- Email: [your-email@example.com]
-- GitHub: [your-github-username]
+- Email: hojinshin2027@gmail.com
+- GitHub: HojiShin
