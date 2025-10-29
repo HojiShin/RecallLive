@@ -13,7 +13,6 @@ import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
-import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -33,6 +32,9 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+/**
+ * FIXED: Automatic Video Service with proper signup vs login handling
+ */
 public class AutomaticVideoService {
     private static final String TAG = "AutomaticVideoService";
     private static final String PREFS_NAME = "RecallLiveVideoPrefs";
@@ -61,20 +63,18 @@ public class AutomaticVideoService {
     }
 
     /**
-     * Initialize for patient
-     * @param isSignupOrLogin: true if signup/login (generate 10 videos), false if background (generate 1)
+     * FIXED: Initialize for patient with proper signup vs login handling
+     * @param isSignup: true = SIGNUP (cleanup + generate 10), false = LOGIN (check + generate if needed)
      */
-    public void initializeForPatient(String patientUid, boolean isSignupOrLogin) {
-        Log.d(TAG, "╔═══════════════════════════════════════════╗");
+    public void initializeForPatient(String patientUid, boolean isSignup) {
+        Log.d(TAG, "╔═══════════════════════════════════════╗");
         Log.d(TAG, "  INITIALIZING VIDEO SERVICE");
         Log.d(TAG, "  Patient: " + patientUid);
-        Log.d(TAG, "  Trigger: " + (isSignupOrLogin ? "SIGNUP/LOGIN" : "BACKGROUND"));
+        Log.d(TAG, "  Trigger: " + (isSignup ? "SIGNUP (cleanup+generate)" : "LOGIN (check+generate)"));
         Log.d(TAG, "  TTS Enabled: " + ENABLE_TTS);
         Log.d(TAG, "  Max videos/day: " + MAX_VIDEOS_PER_DAY);
-        Log.d(TAG, "  Auto cleanup enabled: " + ENABLE_AUTO_CLEANUP);
-        Log.d(TAG, "╚═══════════════════════════════════════════╝");
+        Log.d(TAG, "╚═══════════════════════════════════════╝");
 
-        // Check if new day
         String today = getTodayDateString();
         String lastDate = getLastVideoDate();
 
@@ -84,36 +84,68 @@ public class AutomaticVideoService {
             clearGeneratedClusters();
         }
 
-        // CRITICAL: On login/signup, delete ALL videos and generate fresh ones
-        if (isSignupOrLogin) {
-            Log.d(TAG, "╔═══════════════════════════════════════════╗");
-            Log.d(TAG, "  🧹 FORCED CLEANUP ON LOGIN/SIGNUP");
-            Log.d(TAG, "  Deleting ALL existing videos");
-            Log.d(TAG, "╚═══════════════════════════════════════════╝");
-            Log.d(TAG, "🔄 Resetting cluster tracking for fresh generation...");
-            clearGeneratedClusters(); // Clear before cleanup to start fresh
+        if (isSignup) {
+            Log.d(TAG, "╔═══════════════════════════════════════╗");
+            Log.d(TAG, "  🆕 SIGNUP - Cleanup and Generate Fresh");
+            Log.d(TAG, "╚═══════════════════════════════════════╝");
+            clearGeneratedClusters();
 
-            // Delete ALL videos for this patient (not just old ones)
             cleanupAllVideosWithCallback(patientUid, () -> {
-                Log.d(TAG, "✓ Cleanup callback completed, proceeding to verification...");
-                // After cleanup completes, continue with verification
-                verifyAndSyncVideoCount(patientUid, isSignupOrLogin);
+                Log.d(TAG, "✓ Cleanup complete, generating 10 videos...");
+                verifyAndSyncVideoCount(patientUid, true);
             });
         } else {
-            // For background tasks, only cleanup if enabled
-            if (ENABLE_AUTO_CLEANUP) {
-                Log.d(TAG, "🧹 Background cleanup enabled - deleting old videos only");
-                cleanupOldVideosWithCallback(patientUid, () -> {
-                    verifyAndSyncVideoCount(patientUid, isSignupOrLogin);
-                });
-            } else {
-                Log.d(TAG, "⏭️ Skipping cleanup for background task");
-                verifyAndSyncVideoCount(patientUid, isSignupOrLogin);
-            }
+            Log.d(TAG, "╔═══════════════════════════════════════╗");
+            Log.d(TAG, "  🔑 LOGIN - Check Existing Videos");
+            Log.d(TAG, "╚═══════════════════════════════════════╝");
+
+            Calendar todayStart = Calendar.getInstance();
+            todayStart.set(Calendar.HOUR_OF_DAY, 0);
+            todayStart.set(Calendar.MINUTE, 0);
+            todayStart.set(Calendar.SECOND, 0);
+            todayStart.set(Calendar.MILLISECOND, 0);
+
+            firestore.collection("memory_videos")
+                    .whereEqualTo("patientUid", patientUid)
+                    .whereGreaterThanOrEqualTo("createdAt",
+                            new com.google.firebase.Timestamp(todayStart.getTimeInMillis() / 1000, 0))
+                    .get()
+                    .addOnSuccessListener(querySnapshot -> {
+                        int todayCount = querySnapshot.size();
+
+                        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        Log.d(TAG, "VIDEO COUNT CHECK (LOGIN)");
+                        Log.d(TAG, "Videos from today: " + todayCount + "/" + MAX_VIDEOS_PER_DAY);
+                        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+                        if (todayCount >= MAX_VIDEOS_PER_DAY) {
+                            Log.d(TAG, "✓ Enough videos exist for today");
+                            prefs.edit()
+                                    .putString(KEY_LAST_VIDEO_DATE, today)
+                                    .putInt(KEY_DAILY_VIDEO_COUNT, todayCount)
+                                    .apply();
+                        } else {
+                            int needed = MAX_VIDEOS_PER_DAY - todayCount;
+                            Log.d(TAG, "🎬 Need to generate " + needed + " more videos");
+
+                            prefs.edit()
+                                    .putString(KEY_LAST_VIDEO_DATE, today)
+                                    .putInt(KEY_DAILY_VIDEO_COUNT, todayCount)
+                                    .apply();
+
+                            generateMultipleVideosForPatient(patientUid, needed, "login_supplement");
+                        }
+
+                        scheduleDailyVideoGeneration(patientUid);
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "⚠️ Could not check videos: " + e.getMessage());
+                        verifyAndSyncVideoCount(patientUid, false);
+                    });
         }
     }
 
-    private void verifyAndSyncVideoCount(String patientUid, boolean isSignupOrLogin) {
+    private void verifyAndSyncVideoCount(String patientUid, boolean isSignup) {
         String today = getTodayDateString();
         Log.d(TAG, "🔍 Verifying actual video count for today: " + today);
 
@@ -132,11 +164,11 @@ public class AutomaticVideoService {
                     int actualCount = querySnapshot.size();
                     int storedCount = prefs.getInt(KEY_DAILY_VIDEO_COUNT, 0);
 
-                    Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     Log.d(TAG, "VIDEO COUNT VERIFICATION");
                     Log.d(TAG, "Stored count: " + storedCount);
                     Log.d(TAG, "Actual Firestore count: " + actualCount);
-                    Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
                     if (actualCount != storedCount) {
                         Log.d(TAG, "⚠️ COUNT MISMATCH - Syncing to actual: " + actualCount);
@@ -146,54 +178,46 @@ public class AutomaticVideoService {
                                 .apply();
                     }
 
-                    continueInitialization(patientUid, isSignupOrLogin, actualCount);
+                    continueInitialization(patientUid, isSignup, actualCount);
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "❌ Failed to verify video count: " + e.getMessage());
-                    Log.d(TAG, "⚠️ Resetting count to 0 due to verification failure");
-
                     prefs.edit()
                             .putString(KEY_LAST_VIDEO_DATE, today)
                             .putInt(KEY_DAILY_VIDEO_COUNT, 0)
                             .apply();
 
-                    continueInitialization(patientUid, isSignupOrLogin, 0);
+                    continueInitialization(patientUid, isSignup, 0);
                 });
     }
 
-    private void continueInitialization(String patientUid, boolean isSignupOrLogin, int verifiedCount) {
+    private void continueInitialization(String patientUid, boolean isSignup, int verifiedCount) {
         Log.d(TAG, "📊 Continuing with verified count: " + verifiedCount + "/" + MAX_VIDEOS_PER_DAY);
 
-        if (isSignupOrLogin) {
-            // SIGNUP/LOGIN: Always generate 10 videos (cleanup already happened)
-            Log.d(TAG, "🎬 SIGNUP/LOGIN: Generating 10 videos");
-            generateMultipleVideosForPatient(patientUid, 10, "signup_login");
+        if (isSignup) {
+            Log.d(TAG, "🎬 SIGNUP: Generating 10 videos");
+            generateMultipleVideosForPatient(patientUid, 10, "signup");
         } else {
-            // BACKGROUND: Check limit first
             if (verifiedCount >= MAX_VIDEOS_PER_DAY) {
                 Log.d(TAG, "⚠️ Daily video limit reached (" + verifiedCount + "/" + MAX_VIDEOS_PER_DAY + ")");
-                Log.d(TAG, "Scheduling daily generation for tomorrow");
                 scheduleDailyVideoGeneration(patientUid);
                 return;
             }
 
-            // BACKGROUND: Generate 1 video only
-            Log.d(TAG, "🎬 BACKGROUND: Generating 1 video");
-            generateMultipleVideosForPatient(patientUid, 1, "background");
+            int needed = MAX_VIDEOS_PER_DAY - verifiedCount;
+            Log.d(TAG, "🎬 BACKGROUND: Generating " + needed + " video(s)");
+            generateMultipleVideosForPatient(patientUid, needed, "background");
         }
 
         scheduleDailyVideoGeneration(patientUid);
     }
 
-    /**
-     * CRITICAL METHOD: Generate MULTIPLE videos at once
-     */
     private void generateMultipleVideosForPatient(String patientUid, int videosToGenerate, String triggerType) {
-        Log.d(TAG, "═══════════════════════════════════════════");
+        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         Log.d(TAG, "GENERATING " + videosToGenerate + " VIDEOS");
         Log.d(TAG, "Patient: " + patientUid);
         Log.d(TAG, "Trigger: " + triggerType);
-        Log.d(TAG, "═══════════════════════════════════════════");
+        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
         AppExecutors.getInstance().networkIO().execute(() -> {
             try {
@@ -208,8 +232,6 @@ public class AutomaticVideoService {
                             return;
                         }
                         Log.d(TAG, "✓ Found " + clusters.size() + " clusters");
-                        Log.d(TAG, "🌍 Step 2: Geocoding locations...");
-
                         geocodeClustersAndGenerateMultiple(clusters, patientUid, triggerType, videosToGenerate);
                     }
 
@@ -237,80 +259,45 @@ public class AutomaticVideoService {
             @Override
             public void onComplete(List<PhotoClusteringManager.PhotoCluster> geocodedClusters) {
                 Log.d(TAG, "✓ Geocoding complete");
-                Log.d(TAG, "🎯 Step 3: Generating " + videosToGenerate + " videos...");
 
                 List<PhotoClusteringManager.PhotoCluster> availableClusters = getAvailableClusters(geocodedClusters);
 
                 if (availableClusters.isEmpty()) {
-                    Log.w(TAG, "⚠️ No available clusters - resetting and using all");
+                    Log.w(TAG, "⚠️ No available clusters - resetting");
                     clearGeneratedClusters();
                     availableClusters = new ArrayList<>(geocodedClusters);
                 }
 
                 int videosToCreate = Math.min(videosToGenerate, availableClusters.size());
-                Log.d(TAG, "Creating " + videosToCreate + " videos from " + availableClusters.size() + " available clusters");
-
-                // CRITICAL: Track clusters used in THIS generation session to prevent duplicates
                 Set<String> usedInThisSession = new HashSet<>();
-
                 AtomicInteger completedVideos = new AtomicInteger(0);
                 AtomicInteger failedVideos = new AtomicInteger(0);
 
-                // Generate videos sequentially
                 for (int i = 0; i < videosToCreate; i++) {
-                    // Select cluster that hasn't been used in this session
                     PhotoClusteringManager.PhotoCluster selectedCluster = selectUniqueCluster(availableClusters, usedInThisSession);
 
                     if (selectedCluster == null) {
-                        Log.w(TAG, "⚠️ No more unique clusters available");
                         break;
                     }
 
-                    // Mark as used in this session
                     usedInThisSession.add(selectedCluster.getClusterId());
                     availableClusters.remove(selectedCluster);
 
                     final int videoNumber = i + 1;
-                    Log.d(TAG, "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
                     Log.d(TAG, "🎥 VIDEO " + videoNumber + "/" + videosToCreate);
-                    Log.d(TAG, "Cluster: " + selectedCluster.getClusterId());
-                    Log.d(TAG, "Location: " + selectedCluster.getLocationName());
-                    Log.d(TAG, "Photos: " + selectedCluster.getPhotoCount());
-                    Log.d(TAG, "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
 
                     if (ENABLE_TTS) {
-                        generateVideoWithTTS(selectedCluster, patientUid, triggerType, new VideoCompletionCallback() {
-                            @Override
-                            public void onComplete(boolean success) {
-                                if (success) {
-                                    completedVideos.incrementAndGet();
-                                } else {
-                                    failedVideos.incrementAndGet();
-                                }
-
-                                int total = completedVideos.get() + failedVideos.get();
-                                Log.d(TAG, "Progress: " + total + "/" + videosToCreate +
-                                        " (✓ " + completedVideos.get() + " | ✗ " + failedVideos.get() + ")");
-                            }
+                        generateVideoWithTTS(selectedCluster, patientUid, triggerType, success -> {
+                            if (success) completedVideos.incrementAndGet();
+                            else failedVideos.incrementAndGet();
                         });
                     } else {
-                        generateSilentVideo(selectedCluster, patientUid, triggerType, new VideoCompletionCallback() {
-                            @Override
-                            public void onComplete(boolean success) {
-                                if (success) {
-                                    completedVideos.incrementAndGet();
-                                } else {
-                                    failedVideos.incrementAndGet();
-                                }
-
-                                int total = completedVideos.get() + failedVideos.get();
-                                Log.d(TAG, "Progress: " + total + "/" + videosToCreate +
-                                        " (✓ " + completedVideos.get() + " | ✗ " + failedVideos.get() + ")");
-                            }
+                        generateSilentVideo(selectedCluster, patientUid, triggerType, success -> {
+                            if (success) completedVideos.incrementAndGet();
+                            else failedVideos.incrementAndGet();
                         });
                     }
 
-                    // Small delay between videos
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
@@ -330,42 +317,19 @@ public class AutomaticVideoService {
         Set<String> usedClusters = getGeneratedClusters();
         List<PhotoClusteringManager.PhotoCluster> available = new ArrayList<>();
 
-        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        Log.d(TAG, "CLUSTER AVAILABILITY CHECK");
-        Log.d(TAG, "Total clusters: " + allClusters.size());
-        Log.d(TAG, "Previously used clusters: " + usedClusters.size());
-
         for (PhotoClusteringManager.PhotoCluster cluster : allClusters) {
             if (cluster.getPhotoCount() >= 1 && !usedClusters.contains(cluster.getClusterId())) {
                 available.add(cluster);
             }
         }
 
-        Log.d(TAG, "Available clusters: " + available.size());
-        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-
         return available;
     }
 
-    private PhotoClusteringManager.PhotoCluster selectRandomCluster(
-            List<PhotoClusteringManager.PhotoCluster> clusters) {
-        if (clusters.isEmpty()) return null;
-
-        clusters.sort((a, b) -> b.getPhotoCount() - a.getPhotoCount());
-
-        Random random = new Random();
-        int topChoices = Math.min(5, clusters.size());
-        return clusters.get(random.nextInt(topChoices));
-    }
-
-    /**
-     * Select a unique cluster that hasn't been used in this generation session
-     */
     private PhotoClusteringManager.PhotoCluster selectUniqueCluster(
             List<PhotoClusteringManager.PhotoCluster> clusters, Set<String> usedInSession) {
         if (clusters.isEmpty()) return null;
 
-        // Filter out clusters already used in this session
         List<PhotoClusteringManager.PhotoCluster> uniqueClusters = new ArrayList<>();
         for (PhotoClusteringManager.PhotoCluster cluster : clusters) {
             if (!usedInSession.contains(cluster.getClusterId())) {
@@ -373,35 +337,21 @@ public class AutomaticVideoService {
             }
         }
 
-        if (uniqueClusters.isEmpty()) {
-            Log.w(TAG, "⚠️ All clusters already used in this session");
-            return null;
-        }
+        if (uniqueClusters.isEmpty()) return null;
 
-        // Sort by photo count (prefer clusters with more photos)
         uniqueClusters.sort((a, b) -> b.getPhotoCount() - a.getPhotoCount());
 
-        // Select randomly from top 5 clusters
         Random random = new Random();
         int topChoices = Math.min(5, uniqueClusters.size());
-        PhotoClusteringManager.PhotoCluster selected = uniqueClusters.get(random.nextInt(topChoices));
-
-        Log.d(TAG, "Selected unique cluster: " + selected.getClusterId() +
-                " (not in session set of " + usedInSession.size() + " used clusters)");
-
-        return selected;
+        return uniqueClusters.get(random.nextInt(topChoices));
     }
 
     private void generateVideoWithTTS(PhotoClusteringManager.PhotoCluster cluster, String patientUid,
                                       String triggerType, VideoCompletionCallback callback) {
-        Log.d(TAG, "═══════════════════════════════════════════");
-        Log.d(TAG, "GENERATING VIDEO WITH TTS");
-        Log.d(TAG, "═══════════════════════════════════════════");
-
         ttsGenerator.generateCompleteNarration(cluster, new TTSVideoGenerator.TTSGenerationCallback() {
             @Override
             public void onAudioGenerated(String audioFilePath, int durationSeconds) {
-                final File audioFile = new File(audioFilePath);
+                java.io.File audioFile = new java.io.File(audioFilePath);
                 Media3VideoGenerator videoGen = new Media3VideoGenerator(context, patientUid);
 
                 videoGen.generateVideoFromCluster(cluster, durationSeconds,
@@ -421,7 +371,6 @@ public class AutomaticVideoService {
 
                                             @Override
                                             public void onMergeError(String error) {
-                                                Log.e(TAG, "❌ Merge failed: " + error);
                                                 completeVideoGeneration(patientUid, documentId, triggerType,
                                                         cluster.getClusterId(), videoUrl);
                                                 audioFile.delete();
@@ -432,7 +381,6 @@ public class AutomaticVideoService {
 
                             @Override
                             public void onError(String error) {
-                                Log.e(TAG, "❌ Video generation failed: " + error);
                                 recordVideoGenerationFailure(patientUid, error, triggerType);
                                 audioFile.delete();
                                 if (callback != null) callback.onComplete(false);
@@ -442,7 +390,6 @@ public class AutomaticVideoService {
 
             @Override
             public void onError(String error) {
-                Log.e(TAG, "❌ TTS failed: " + error);
                 generateSilentVideo(cluster, patientUid, triggerType, callback);
             }
         });
@@ -450,10 +397,6 @@ public class AutomaticVideoService {
 
     private void generateSilentVideo(PhotoClusteringManager.PhotoCluster cluster, String patientUid,
                                      String triggerType, VideoCompletionCallback callback) {
-        Log.d(TAG, "═══════════════════════════════════════════");
-        Log.d(TAG, "GENERATING SILENT VIDEO");
-        Log.d(TAG, "═══════════════════════════════════════════");
-
         Media3VideoGenerator generator = new Media3VideoGenerator(context, patientUid);
 
         generator.generateVideoFromCluster(cluster, 0, new Media3VideoGenerator.VideoGenerationCallback() {
@@ -465,7 +408,6 @@ public class AutomaticVideoService {
 
             @Override
             public void onError(String error) {
-                Log.e(TAG, "❌ Video generation failed: " + error);
                 recordVideoGenerationFailure(patientUid, error, triggerType);
                 if (callback != null) callback.onComplete(false);
             }
@@ -473,9 +415,7 @@ public class AutomaticVideoService {
     }
 
     private void updateVideoUrl(String documentId, String newVideoUrl) {
-        firestore.collection("memory_videos").document(documentId).update("videoUrl", newVideoUrl)
-                .addOnSuccessListener(aVoid -> Log.d(TAG, "✓ Video URL updated"))
-                .addOnFailureListener(e -> Log.e(TAG, "❌ Failed to update URL", e));
+        firestore.collection("memory_videos").document(documentId).update("videoUrl", newVideoUrl);
     }
 
     private void completeVideoGeneration(String patientUid, String documentId, String triggerType,
@@ -483,24 +423,20 @@ public class AutomaticVideoService {
         recordVideoGeneration(patientUid, documentId, triggerType, clusterId);
         incrementDailyCount();
         markClusterAsGenerated(clusterId);
-
-        int currentCount = getTodayVideoCount();
-        Log.d(TAG, "✓ Video complete (" + currentCount + "/" + MAX_VIDEOS_PER_DAY + ")");
     }
 
     private void scheduleDailyVideoGeneration(String patientUid) {
-        Calendar calendar = Calendar.getInstance();
         Calendar targetTime = Calendar.getInstance();
         targetTime.set(Calendar.HOUR_OF_DAY, VideoConfiguration.DAILY_GENERATION_HOUR);
         targetTime.set(Calendar.MINUTE, 0);
         targetTime.set(Calendar.SECOND, 0);
         targetTime.set(Calendar.MILLISECOND, 0);
 
-        if (calendar.after(targetTime)) {
+        if (Calendar.getInstance().after(targetTime)) {
             targetTime.add(Calendar.DAY_OF_MONTH, 1);
         }
 
-        long initialDelay = targetTime.getTimeInMillis() - calendar.getTimeInMillis();
+        long initialDelay = targetTime.getTimeInMillis() - System.currentTimeMillis();
 
         Data inputData = new Data.Builder().putString("patient_uid", patientUid).build();
         Constraints constraints = new Constraints.Builder()
@@ -522,32 +458,15 @@ public class AutomaticVideoService {
                 dailyWork
         );
 
-        Log.d(TAG, "✓ Daily generation scheduled for: " + targetTime.getTime());
+        Log.d(TAG, "✓ Daily generation scheduled");
     }
 
-    /**
-     * Public method to cleanup old videos (keeps today's videos)
-     */
-    public void cleanupOldVideos(String patientUid) {
-        cleanupOldVideosWithCallback(patientUid, null);
-    }
-
-    /**
-     * Public method to cleanup ALL videos
-     */
     public void cleanupAllVideos(String patientUid) {
         cleanupAllVideosWithCallback(patientUid, null);
     }
 
-    /**
-     * Delete ALL videos for this patient (used on login/signup)
-     */
     private void cleanupAllVideosWithCallback(String patientUid, Runnable onComplete) {
-        Log.d(TAG, "═══════════════════════════════════════════");
         Log.d(TAG, "DELETING ALL VIDEOS FOR PATIENT");
-        Log.d(TAG, "═══════════════════════════════════════════");
-
-        Log.d(TAG, "Querying all videos for patient: " + patientUid);
 
         firestore.collection("memory_videos")
                 .whereEqualTo("patientUid", patientUid)
@@ -555,215 +474,45 @@ public class AutomaticVideoService {
                 .addOnSuccessListener(querySnapshot -> {
                     int totalVideos = querySnapshot.size();
 
-                    Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                    Log.d(TAG, "CLEANUP ALL - QUERY RESULTS");
-                    Log.d(TAG, "Total videos found: " + totalVideos);
-                    Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-
                     if (totalVideos == 0) {
-                        Log.d(TAG, "✓ No videos to clean");
-                        if (onComplete != null) {
-                            Log.d(TAG, "✓ Calling completion callback");
-                            onComplete.run();
-                        }
+                        if (onComplete != null) onComplete.run();
                         return;
                     }
 
-                    final int[] deletedSoFar = {0};
+                    final int[] deletedCount = {0};
 
-                    // Delete ALL videos
                     for (com.google.firebase.firestore.QueryDocumentSnapshot doc : querySnapshot) {
                         String videoUrl = doc.getString("videoUrl");
-                        String docId = doc.getId();
-                        com.google.firebase.Timestamp createdAt = doc.getTimestamp("createdAt");
-
-                        Log.d(TAG, "🗑️ Deleting video: " + docId +
-                                (createdAt != null ? " (created: " + createdAt.toDate() + ")" : ""));
 
                         if (videoUrl != null && !videoUrl.isEmpty()) {
                             try {
                                 com.google.firebase.storage.FirebaseStorage.getInstance()
                                         .getReferenceFromUrl(videoUrl)
-                                        .delete()
-                                        .addOnSuccessListener(aVoid -> Log.d(TAG, "  ✓ Deleted storage: " + docId))
-                                        .addOnFailureListener(e -> Log.w(TAG, "  ⚠️ Storage delete failed: " + docId + " - " + e.getMessage()));
+                                        .delete();
                             } catch (Exception e) {
-                                Log.w(TAG, "  ⚠️ Storage error for " + docId, e);
+                                Log.w(TAG, "Storage delete failed: " + e.getMessage());
                             }
                         }
 
                         doc.getReference().delete()
                                 .addOnSuccessListener(aVoid -> {
-                                    Log.d(TAG, "  ✓ Deleted firestore: " + docId);
-                                    deletedSoFar[0]++;
-                                    Log.d(TAG, "  Progress: " + deletedSoFar[0] + "/" + totalVideos);
-
-                                    if (deletedSoFar[0] >= totalVideos) {
-                                        Log.d(TAG, "═══════════════════════════════════════════");
-                                        Log.d(TAG, "✓ ALL VIDEOS DELETED: " + deletedSoFar[0] + " videos removed");
-                                        Log.d(TAG, "═══════════════════════════════════════════");
-                                        if (onComplete != null) {
-                                            Log.d(TAG, "✓ Calling completion callback");
-                                            onComplete.run();
-                                        }
+                                    deletedCount[0]++;
+                                    if (deletedCount[0] >= totalVideos) {
+                                        Log.d(TAG, "✓ ALL VIDEOS DELETED");
+                                        if (onComplete != null) onComplete.run();
                                     }
                                 })
                                 .addOnFailureListener(e -> {
-                                    Log.e(TAG, "  ❌ Firestore delete failed: " + docId + " - " + e.getMessage());
-                                    deletedSoFar[0]++;
-                                    Log.d(TAG, "  Progress: " + deletedSoFar[0] + "/" + totalVideos);
-
-                                    if (deletedSoFar[0] >= totalVideos) {
-                                        Log.d(TAG, "═══════════════════════════════════════════");
-                                        Log.d(TAG, "✓ CLEANUP COMPLETE (with errors): " + deletedSoFar[0] + " processed");
-                                        Log.d(TAG, "═══════════════════════════════════════════");
-                                        if (onComplete != null) {
-                                            Log.d(TAG, "✓ Calling completion callback");
-                                            onComplete.run();
-                                        }
+                                    deletedCount[0]++;
+                                    if (deletedCount[0] >= totalVideos) {
+                                        if (onComplete != null) onComplete.run();
                                     }
                                 });
                     }
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "❌ Cleanup query failed: " + e.getMessage(), e);
-                    if (onComplete != null) {
-                        Log.d(TAG, "⚠️ Calling completion callback despite error");
-                        onComplete.run();
-                    }
-                });
-    }
-
-    /**
-     * Delete only OLD videos (before today) - used by daily worker
-     */
-    private void cleanupOldVideosWithCallback(String patientUid, Runnable onComplete) {
-        Log.d(TAG, "═══════════════════════════════════════════");
-        Log.d(TAG, "CLEANING UP OLD VIDEOS (Keeping only today's)");
-        Log.d(TAG, "═══════════════════════════════════════════");
-
-        Calendar today = Calendar.getInstance();
-        today.set(Calendar.HOUR_OF_DAY, 0);
-        today.set(Calendar.MINUTE, 0);
-        today.set(Calendar.SECOND, 0);
-        today.set(Calendar.MILLISECOND, 0);
-        long todayStartTime = today.getTimeInMillis();
-
-        Log.d(TAG, "Today's date: " + new Date(todayStartTime));
-        Log.d(TAG, "Querying all videos for patient: " + patientUid);
-
-        firestore.collection("memory_videos")
-                .whereEqualTo("patientUid", patientUid)
-                .get()
-                .addOnSuccessListener(querySnapshot -> {
-                    Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                    Log.d(TAG, "QUERY RESULTS");
-                    Log.d(TAG, "Total videos found: " + querySnapshot.size());
-
-                    int todayCount = 0;
-                    int oldCount = 0;
-                    int totalToDelete = 0;
-
-                    // First pass: count and log
-                    for (com.google.firebase.firestore.QueryDocumentSnapshot doc : querySnapshot) {
-                        com.google.firebase.Timestamp createdAt = doc.getTimestamp("createdAt");
-                        if (createdAt != null) {
-                            Date videoDate = createdAt.toDate();
-                            boolean isOld = videoDate.getTime() < todayStartTime;
-
-                            if (isOld) {
-                                oldCount++;
-                                totalToDelete++;
-                                Log.d(TAG, "  📅 OLD: " + doc.getId() + " - " + videoDate);
-                            } else {
-                                todayCount++;
-                                Log.d(TAG, "  📅 TODAY: " + doc.getId() + " - " + videoDate);
-                            }
-                        } else {
-                            Log.w(TAG, "  ⚠️ NO DATE: " + doc.getId());
-                        }
-                    }
-
-                    Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                    Log.d(TAG, "CLEANUP SUMMARY");
-                    Log.d(TAG, "Videos from today: " + todayCount);
-                    Log.d(TAG, "Old videos to delete: " + oldCount);
-                    Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-
-                    if (totalToDelete == 0) {
-                        Log.d(TAG, "✓ No old videos to clean");
-                        if (onComplete != null) {
-                            Log.d(TAG, "✓ Calling completion callback");
-                            onComplete.run();
-                        }
-                        return;
-                    }
-
-                    final int[] deletedSoFar = {0};
-
-                    // Second pass: delete old videos
-                    for (com.google.firebase.firestore.QueryDocumentSnapshot doc : querySnapshot) {
-                        com.google.firebase.Timestamp createdAt = doc.getTimestamp("createdAt");
-
-                        if (createdAt != null && createdAt.toDate().getTime() < todayStartTime) {
-                            String videoUrl = doc.getString("videoUrl");
-                            String docId = doc.getId();
-
-                            Log.d(TAG, "🗑️ Deleting old video: " + docId);
-
-                            if (videoUrl != null && !videoUrl.isEmpty()) {
-                                try {
-                                    com.google.firebase.storage.FirebaseStorage.getInstance()
-                                            .getReferenceFromUrl(videoUrl)
-                                            .delete()
-                                            .addOnSuccessListener(aVoid -> Log.d(TAG, "  ✓ Deleted storage: " + docId))
-                                            .addOnFailureListener(e -> Log.w(TAG, "  ⚠️ Storage delete failed: " + docId + " - " + e.getMessage()));
-                                } catch (Exception e) {
-                                    Log.w(TAG, "  ⚠️ Storage error for " + docId, e);
-                                }
-                            }
-
-                            final int expectedTotal = totalToDelete;
-                            doc.getReference().delete()
-                                    .addOnSuccessListener(aVoid -> {
-                                        Log.d(TAG, "  ✓ Deleted firestore: " + docId);
-                                        deletedSoFar[0]++;
-                                        Log.d(TAG, "  Progress: " + deletedSoFar[0] + "/" + expectedTotal);
-
-                                        if (deletedSoFar[0] >= expectedTotal) {
-                                            Log.d(TAG, "═══════════════════════════════════════════");
-                                            Log.d(TAG, "✓ CLEANUP COMPLETE: " + deletedSoFar[0] + " old videos deleted");
-                                            Log.d(TAG, "═══════════════════════════════════════════");
-                                            if (onComplete != null) {
-                                                Log.d(TAG, "✓ Calling completion callback");
-                                                onComplete.run();
-                                            }
-                                        }
-                                    })
-                                    .addOnFailureListener(e -> {
-                                        Log.e(TAG, "  ❌ Firestore delete failed: " + docId + " - " + e.getMessage());
-                                        deletedSoFar[0]++;
-                                        Log.d(TAG, "  Progress: " + deletedSoFar[0] + "/" + expectedTotal);
-
-                                        if (deletedSoFar[0] >= expectedTotal) {
-                                            Log.d(TAG, "═══════════════════════════════════════════");
-                                            Log.d(TAG, "✓ CLEANUP COMPLETE (with errors): " + deletedSoFar[0] + " processed");
-                                            Log.d(TAG, "═══════════════════════════════════════════");
-                                            if (onComplete != null) {
-                                                Log.d(TAG, "✓ Calling completion callback");
-                                                onComplete.run();
-                                            }
-                                        }
-                                    });
-                        }
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "❌ Cleanup query failed: " + e.getMessage(), e);
-                    if (onComplete != null) {
-                        Log.d(TAG, "⚠️ Calling completion callback despite error");
-                        onComplete.run();
-                    }
+                    Log.e(TAG, "Cleanup query failed: " + e.getMessage());
+                    if (onComplete != null) onComplete.run();
                 });
     }
 
@@ -818,7 +567,6 @@ public class AutomaticVideoService {
                 .putString(KEY_LAST_VIDEO_DATE, getTodayDateString())
                 .putInt(KEY_DAILY_VIDEO_COUNT, 0)
                 .apply();
-        Log.d(TAG, "✓ Count reset to 0");
     }
 
     private Set<String> getGeneratedClusters() {
@@ -834,19 +582,13 @@ public class AutomaticVideoService {
 
     private void clearGeneratedClusters() {
         prefs.edit().remove(KEY_GENERATED_CLUSTERS).apply();
-        Log.d(TAG, "✓ Generated clusters cleared");
     }
 
     public void stopForPatient(String patientUid) {
-        Log.d(TAG, "Stopping service for: " + patientUid);
         workManager.cancelAllWorkByTag(WORK_TAG_DAILY + "_" + patientUid);
         ttsGenerator.release();
-        Log.d(TAG, "✓ Service stopped");
     }
 
-    /**
-     * UPDATED: Daily worker now generates 10 new videos at 12am and cleans up old ones
-     */
     public static class DailyVideoWorker extends Worker {
         private static final String TAG = "DailyVideoWorker";
 
@@ -859,37 +601,17 @@ public class AutomaticVideoService {
         public Result doWork() {
             String patientUid = getInputData().getString("patient_uid");
             if (patientUid == null) {
-                Log.e(TAG, "❌ No patient UID");
                 return Result.failure();
             }
 
-            Log.d(TAG, "═══════════════════════════════════════════");
-            Log.d(TAG, "DAILY VIDEO WORKER - MIDNIGHT GENERATION");
-            Log.d(TAG, "Patient: " + patientUid);
-            Log.d(TAG, "═══════════════════════════════════════════");
-
             try {
                 AutomaticVideoService service = new AutomaticVideoService(getApplicationContext());
-
-                // Reset counters for new day
                 service.resetDailyCount();
                 service.clearGeneratedClusters();
-
-                // Clean up ONLY yesterday's videos (keep nothing, since we're generating fresh)
-                // Actually, at midnight we want to delete ALL old videos
-                if (ENABLE_AUTO_CLEANUP) {
-                    Log.d(TAG, "🧹 Cleaning up all old videos at midnight...");
-                    service.cleanupOldVideos(patientUid);
-                }
-
-                // Generate 10 new videos for today
-                Log.d(TAG, "🎬 Generating 10 videos at midnight");
                 service.generateMultipleVideosForPatient(patientUid, 10, "daily_midnight");
-
-                Log.d(TAG, "✓ DAILY WORKER COMPLETE");
                 return Result.success();
             } catch (Exception e) {
-                Log.e(TAG, "❌ Daily worker failed", e);
+                Log.e(TAG, "Daily worker failed", e);
                 return Result.failure();
             }
         }

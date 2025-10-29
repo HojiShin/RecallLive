@@ -23,6 +23,7 @@ import java.util.List;
 
 /**
  * UPDATED: No manual buttons - all video generation is automatic
+ * FIXED: Fragment back navigation crash
  */
 public class PatientHomeFragment extends Fragment {
     private static final String TAG = "PatientHomeFragment";
@@ -156,7 +157,7 @@ public class PatientHomeFragment extends Fragment {
     }
 
     /**
-     * Open video player fragment
+     * FIXED: Open video player fragment with proper fragment transaction
      */
     private void openVideoPlayer(Video video) {
         if (video == null) {
@@ -173,27 +174,39 @@ public class PatientHomeFragment extends Fragment {
         Log.d(TAG, "Opening video: " + video.getTitle());
         Log.d(TAG, "Document ID: " + video.getDocumentId());
 
-        // Open video player fragment with close button
-        PatientVideoOpenedFragment videoFragment = PatientVideoOpenedFragment.newInstance(
-                url,
-                video.getTitle() != null ? video.getTitle() : "Memory Video",
-                video.getLocationName() != null ? video.getLocationName() : "Unknown Location",
-                video.getTimeDescription() != null ? video.getTimeDescription() : "Unknown Time",
-                video.getPhotoCount(),
-                video.getDocumentId()
-        );
+        // FIXED: Check if fragment manager is available
+        if (getParentFragmentManager() == null || !isAdded()) {
+            Log.w(TAG, "Fragment not added or manager unavailable");
+            return;
+        }
 
-        getParentFragmentManager().beginTransaction()
-                .replace(R.id.container, videoFragment)
-                .addToBackStack(null)
-                .commit();
+        try {
+            // Open video player fragment with close button
+            PatientVideoOpenedFragment videoFragment = PatientVideoOpenedFragment.newInstance(
+                    url,
+                    video.getTitle() != null ? video.getTitle() : "Memory Video",
+                    video.getLocationName() != null ? video.getLocationName() : "Unknown Location",
+                    video.getTimeDescription() != null ? video.getTimeDescription() : "Unknown Time",
+                    video.getPhotoCount(),
+                    video.getDocumentId()
+            );
+
+            // FIXED: Use replace instead of add to avoid duplicate fragments
+            getParentFragmentManager().beginTransaction()
+                    .replace(R.id.container, videoFragment)
+                    .addToBackStack("video_player")
+                    .commit();
+        } catch (IllegalStateException e) {
+            Log.e(TAG, "Error opening video fragment", e);
+            Toast.makeText(getContext(), "Unable to open video", Toast.LENGTH_SHORT).show();
+        }
     }
 
     /**
      * Update video list in UI
      */
     private void updateVideoList(List<Video> videos) {
-        if (getActivity() == null) return;
+        if (getActivity() == null || !isAdded()) return;
 
         getActivity().runOnUiThread(() -> {
             if (videos == null || videos.isEmpty()) {
@@ -211,7 +224,7 @@ public class PatientHomeFragment extends Fragment {
      * Show empty state message
      */
     private void showEmptyState(String message) {
-        if (getActivity() != null) {
+        if (getActivity() != null && isAdded()) {
             getActivity().runOnUiThread(() -> {
                 recyclerView.setVisibility(View.GONE);
                 emptyStateText.setVisibility(View.VISIBLE);
@@ -224,7 +237,7 @@ public class PatientHomeFragment extends Fragment {
      * Show loading indicator
      */
     private void showLoading() {
-        if (getActivity() != null) {
+        if (getActivity() != null && isAdded()) {
             getActivity().runOnUiThread(() -> {
                 progressBar.setVisibility(View.VISIBLE);
                 recyclerView.setVisibility(View.GONE);
@@ -237,7 +250,7 @@ public class PatientHomeFragment extends Fragment {
      * Hide loading indicator
      */
     private void hideLoading() {
-        if (getActivity() != null) {
+        if (getActivity() != null && isAdded()) {
             getActivity().runOnUiThread(() -> {
                 progressBar.setVisibility(View.GONE);
             });

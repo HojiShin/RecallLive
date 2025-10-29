@@ -25,12 +25,18 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+
+/**
+ * FIXED: Login activity with proper video service initialization
+ * - Passes FALSE to video service (check existing, don't cleanup)
+ */
 public class LoginActivity extends AppCompatActivity {
     private static final String TAG = "LoginActivity";
     private static final int PERMISSION_REQUEST_CODE = 100;
     private static final String PREFS_NAME = "RecallLivePrefs";
+
     Button loginToPatientSignUpBtn;
-    Boolean userType = null; // Initialize as null to catch unset state
+    Boolean userType = null;
     private FirebaseAuth firebaseAuth;
     private EditText editTextEmail, editTextPassword;
     private Button button;
@@ -82,9 +88,9 @@ public class LoginActivity extends AppCompatActivity {
         DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
         currentUserId = userId;
 
-        Log.d(TAG, "╔═══════════════════════════════════════════╗");
+        Log.d(TAG, "╔═══════════════════════════════════════╗");
         Log.d(TAG, "CHECKING USER TYPE FOR: " + userId);
-        Log.d(TAG, "╚═══════════════════════════════════════════╝");
+        Log.d(TAG, "╚═══════════════════════════════════════╝");
 
         // Check Patient first
         databaseReference.child("Patient").child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
@@ -93,7 +99,6 @@ public class LoginActivity extends AppCompatActivity {
                 Log.d(TAG, "📊 Patient check - snapshot.exists(): " + snapshot.exists());
                 Log.d(TAG, "📊 Patient check - has children: " + snapshot.hasChildren());
 
-                // Check if this is a REAL patient node (has email field) or just an empty/placeholder node
                 boolean hasEmail = snapshot.child("email").exists();
                 boolean hasAccountType = snapshot.child("accountType").exists() &&
                         "patient".equals(snapshot.child("accountType").getValue(String.class));
@@ -102,14 +107,13 @@ public class LoginActivity extends AppCompatActivity {
                 Log.d(TAG, "📊 Patient node accountType: " + snapshot.child("accountType").getValue());
 
                 if (snapshot.exists() && snapshot.hasChildren() && (hasEmail || hasAccountType)) {
-                    // DEBUG: Print ALL data in Patient node
                     Log.d(TAG, "🔍 PATIENT NODE DATA:");
                     for (DataSnapshot child : snapshot.getChildren()) {
                         Log.d(TAG, "  - " + child.getKey() + " = " + child.getValue());
                     }
 
                     Log.d(TAG, "✓ User found as PATIENT (VALID DATA)");
-                    userType = true; // Set BEFORE calling any other methods
+                    userType = true;
 
                     SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
                     prefs.edit()
@@ -135,14 +139,13 @@ public class LoginActivity extends AppCompatActivity {
                             Log.d(TAG, "📊 Guardian node has email: " + hasEmail);
 
                             if (snapshot.exists() && snapshot.hasChildren() && hasEmail) {
-                                // DEBUG: Print ALL data in Guardian node
                                 Log.d(TAG, "🔍 GUARDIAN NODE DATA:");
                                 for (DataSnapshot child : snapshot.getChildren()) {
                                     Log.d(TAG, "  - " + child.getKey() + " = " + child.getValue());
                                 }
 
                                 Log.d(TAG, "✓ User found as GUARDIAN (VALID DATA)");
-                                userType = false; // Set BEFORE calling any other methods
+                                userType = false;
 
                                 SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
                                 prefs.edit()
@@ -152,7 +155,6 @@ public class LoginActivity extends AppCompatActivity {
 
                                 Log.d(TAG, "✓ Saved to SharedPreferences: user_type=guardian");
 
-                                // Get linked patient UID
                                 String patientUid = snapshot.child("patient-uid").getValue(String.class);
                                 Log.d(TAG, "Guardian's linked patient UID: " + (patientUid != null ? patientUid : "NONE"));
 
@@ -163,7 +165,6 @@ public class LoginActivity extends AppCompatActivity {
                                     Log.w(TAG, "⚠️ No linked patient for this guardian");
                                 }
 
-                                // Navigate to Guardian home
                                 navigateToHome();
                             } else {
                                 Log.e(TAG, "❌ User not found in Guardian database either");
@@ -191,9 +192,9 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void checkPatientClustersAndProceed(String patientUid) {
-        Log.d(TAG, "╔═══════════════════════════════════════════╗");
+        Log.d(TAG, "╔═══════════════════════════════════════╗");
         Log.d(TAG, "CHECKING PATIENT CLUSTERS");
-        Log.d(TAG, "╚═══════════════════════════════════════════╝");
+        Log.d(TAG, "╚═══════════════════════════════════════╝");
 
         DatabaseReference clusterRef = FirebaseDatabase.getInstance().getReference()
                 .child("Patient")
@@ -216,7 +217,6 @@ public class LoginActivity extends AppCompatActivity {
                     Log.d(TAG, "  Total clusters: " + totalClusters);
                     Log.d(TAG, "  Last updated: " + lastUpdated);
 
-                    // FIXED: For existing patients logging in, always pass true for video generation
                     checkPermissionsAndStartServices(patientUid);
                 }
             }
@@ -244,7 +244,6 @@ public class LoginActivity extends AppCompatActivity {
 
     private void checkPermissionsAndStartServices(String patientUid) {
         if (hasStoragePermission()) {
-            // FIXED: Always treat login as "signup/login" trigger (true) for video generation
             startAutomaticServices(patientUid);
         } else {
             requestStoragePermission(patientUid);
@@ -252,48 +251,37 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     /**
-     * FIXED: Removed isFirstTime parameter - login always generates 10 videos
+     * FIXED: Start services for LOGIN (not signup)
+     * Pass FALSE to indicate this is LOGIN (check existing, don't cleanup)
      */
     private void startAutomaticServices(String patientUid) {
-        Log.d(TAG, "╔═══════════════════════════════════════════╗");
+        Log.d(TAG, "╔═══════════════════════════════════════╗");
         Log.d(TAG, "STARTING AUTOMATIC SERVICES (LOGIN)");
         Log.d(TAG, "Patient UID: " + patientUid);
-        Log.d(TAG, "╚═══════════════════════════════════════════╝");
+        Log.d(TAG, "╚═══════════════════════════════════════╝");
 
         // Start auto clustering
         Log.d(TAG, "▶️ Step 1: Starting auto clustering...");
         autoClusteringService.initializeForPatient(patientUid);
         Log.d(TAG, "✓ Auto clustering initialized");
 
-        // CRITICAL FIX: Always pass TRUE for login to trigger:
-        // 1. Cleanup of old videos
-        // 2. Generation of 10 new videos
-        Log.d(TAG, "▶️ Step 2: Starting automatic video service (LOGIN = 10 videos)...");
-        automaticVideoService.initializeForPatient(patientUid, true);
-        Log.d(TAG, "✓ Automatic video service initialized");
+        // CRITICAL FIX: Pass FALSE for login
+        // This will:
+        // 1. Check if videos already exist for today
+        // 2. Generate only if needed (not cleanup)
+        // 3. Schedule daily video generation
+        Log.d(TAG, "▶️ Step 2: Starting video service (LOGIN = check + generate if needed)...");
+        automaticVideoService.initializeForPatient(patientUid, false); // FALSE = login
+        Log.d(TAG, "✓ Video service initialized");
 
-        // Verify video service is working
-        SharedPreferences prefs = getSharedPreferences("RecallLiveVideoPrefs", MODE_PRIVATE);
-        int count = prefs.getInt("daily_video_count", 0);
-        String date = prefs.getString("last_video_date", "never");
-
-        Log.d(TAG, "╔═══════════════════════════════════════════╗");
-        Log.d(TAG, "VIDEO SERVICE STATUS");
-        Log.d(TAG, "Current video count: " + count + "/10");
-        Log.d(TAG, "Last video date: " + date);
-        Log.d(TAG, "╚═══════════════════════════════════════════╝");
-
-        // Show progress message
+        // Show message
         Toast.makeText(this,
-                "Generating memory videos...",
-                Toast.LENGTH_LONG).show();
+                "Loading your memory videos...",
+                Toast.LENGTH_SHORT).show();
 
-        // Wait 2 seconds then navigate (give services time to start)
-        new android.os.Handler().postDelayed(() -> {
-            navigateToHome();
-        }, 2000);
+        // Navigate immediately
+        navigateToHome();
     }
-
 
     private boolean hasStoragePermission() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -364,7 +352,6 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void navigateToHome() {
-        // CRITICAL FIX: Check userType is actually set before navigating
         if (userType == null) {
             Log.e(TAG, "❌❌❌ CRITICAL ERROR: userType is NULL ❌❌❌");
             Toast.makeText(getApplicationContext(),
@@ -373,22 +360,21 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        // Read back SharedPreferences to verify what was saved
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String savedUserType = prefs.getString("user_type", "NOT SET");
         String savedPatientUid = prefs.getString("patient_uid", "NOT SET");
         String savedGuardianUid = prefs.getString("guardian_uid", "NOT SET");
         String linkedPatientUid = prefs.getString("linked_patient_uid", "NOT SET");
 
-        Log.d(TAG, "╔═══════════════════════════════════════════╗");
+        Log.d(TAG, "╔═══════════════════════════════════════╗");
         Log.d(TAG, "NAVIGATING TO HOME");
-        Log.d(TAG, "╚═══════════════════════════════════════════╝");
+        Log.d(TAG, "╚═══════════════════════════════════════╝");
         Log.d(TAG, "userType boolean: " + (userType ? "TRUE (PATIENT)" : "FALSE (GUARDIAN)"));
         Log.d(TAG, "SharedPrefs user_type: " + savedUserType);
         Log.d(TAG, "SharedPrefs patient_uid: " + savedPatientUid);
         Log.d(TAG, "SharedPrefs guardian_uid: " + savedGuardianUid);
         Log.d(TAG, "SharedPrefs linked_patient_uid: " + linkedPatientUid);
-        Log.d(TAG, "╚═══════════════════════════════════════════╝");
+        Log.d(TAG, "╚═══════════════════════════════════════╝");
 
         Toast.makeText(getApplicationContext(), "Login successful as " + (userType ? "Patient" : "Guardian"), Toast.LENGTH_SHORT).show();
 
@@ -414,14 +400,12 @@ public class LoginActivity extends AppCompatActivity {
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         if (task.isSuccessful()) {
                             String userId = firebaseAuth.getCurrentUser().getUid();
-                            Log.d(TAG, "╔═══════════════════════════════════════════╗");
+                            Log.d(TAG, "╔═══════════════════════════════════════╗");
                             Log.d(TAG, "LOGIN SUCCESSFUL");
                             Log.d(TAG, "User ID: " + userId);
-                            Log.d(TAG, "╚═══════════════════════════════════════════╝");
+                            Log.d(TAG, "╚═══════════════════════════════════════╝");
 
-                            // Reset userType before checking
                             userType = null;
-
                             setUserType(userId);
                         }
                         else {

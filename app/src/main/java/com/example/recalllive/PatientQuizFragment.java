@@ -250,6 +250,8 @@ public class PatientQuizFragment extends Fragment {
         });
     }
 
+    // FIXED: PatientQuizFragment.java - Only geocode what's needed
+
     private void generateQuizQuestions(List<PhotoClusteringManager.PhotoCluster> clusters) {
         Log.d(TAG, "Generating random quiz questions for today...");
 
@@ -258,8 +260,21 @@ public class PatientQuizFragment extends Fragment {
             return;
         }
 
+        // FIXED: Select 10 random clusters FIRST, then only geocode those
+        List<PhotoClusteringManager.PhotoCluster> shuffledClusters = new ArrayList<>(clusters);
+        Collections.shuffle(shuffledClusters, random);
+
+        // Only take the clusters we'll actually use
+        int clustersNeeded = Math.min(TOTAL_QUESTIONS, shuffledClusters.size());
+        List<PhotoClusteringManager.PhotoCluster> selectedClusters =
+                shuffledClusters.subList(0, clustersNeeded);
+
+        Log.d(TAG, "Selected " + selectedClusters.size() + " clusters for quiz (out of " +
+                clusters.size() + " total)");
+
+        // NOW geocode only the selected clusters
         LocationGeocoderService geocoder = new LocationGeocoderService(getContext());
-        geocoder.geocodeClusters(clusters, new LocationGeocoderService.ClusterGeocodeCallback() {
+        geocoder.geocodeClusters(selectedClusters, new LocationGeocoderService.ClusterGeocodeCallback() {
             @Override
             public void onProgress(int processed, int total) {
                 Log.d(TAG, "  Geocoding: " + processed + "/" + total);
@@ -275,7 +290,6 @@ public class PatientQuizFragment extends Fragment {
             }
         });
     }
-
     /**
      * FIXED: Generate exactly TOTAL_QUESTIONS (10) questions, no more
      */

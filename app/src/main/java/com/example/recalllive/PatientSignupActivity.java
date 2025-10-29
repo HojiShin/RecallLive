@@ -32,11 +32,12 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * UPDATED: Patient signup with automatic video service initialization and cleanup
+ * FIXED: Wait for photo clustering to complete before starting video generation
  */
 public class PatientSignupActivity extends AppCompatActivity {
     private static final String TAG = "PatientSignupActivity";
@@ -62,7 +63,6 @@ public class PatientSignupActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_patientsignup);
 
-        // Initialize services
         autoClusteringService = new AutoClusteringService(this);
         automaticVideoService = new AutomaticVideoService(this);
 
@@ -123,75 +123,46 @@ public class PatientSignupActivity extends AppCompatActivity {
         Toast.makeText(this, "Creating your account...", Toast.LENGTH_SHORT).show();
         patientEmail = email;
 
-        // If guardian email provided, find guardian FIRST before creating patient
         if (!TextUtils.isEmpty(guardianEmail)) {
             Log.d(TAG, "╔═══════════════════════════════════════╗");
             Log.d(TAG, "║  GUARDIAN EMAIL PROVIDED - SEARCHING   ║");
             Log.d(TAG, "╚═══════════════════════════════════════╝");
-            Log.d(TAG, "Guardian Email: " + guardianEmail);
-
             searchForGuardian(guardianEmail, email, password);
         } else {
-            Log.d(TAG, "No guardian email provided - proceeding with patient creation");
             createPatientAccount(email, password, null);
         }
     }
 
     private void searchForGuardian(String guardianEmail, String patientEmailToCreate, String password) {
-        Log.d(TAG, "Searching Guardian database for email: " + guardianEmail);
-
         mDatabase.child("Guardian")
                 .orderByChild("email")
                 .equalTo(guardianEmail)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        Log.d(TAG, "Search result - exists: " + snapshot.exists());
-                        Log.d(TAG, "Search result - children: " + snapshot.getChildrenCount());
-
                         if (snapshot.exists() && snapshot.getChildrenCount() > 0) {
                             for (DataSnapshot guardianSnapshot : snapshot.getChildren()) {
                                 foundGuardianUid = guardianSnapshot.getKey();
-                                Log.d(TAG, "╔═══════════════════════════════════════╗");
-                                Log.d(TAG, "║   ✓✓✓ GUARDIAN FOUND ✓✓✓              ║");
-                                Log.d(TAG, "╚═══════════════════════════════════════╝");
-                                Log.d(TAG, "Guardian UID: " + foundGuardianUid);
-                                Log.d(TAG, "Guardian Email: " + guardianEmail);
-
-                                // Now create patient account with guardian link
+                                Log.d(TAG, "✓ GUARDIAN FOUND: " + foundGuardianUid);
                                 createPatientAccount(patientEmailToCreate, password, foundGuardianUid);
                                 return;
                             }
                         } else {
-                            Log.w(TAG, "╔═══════════════════════════════════════╗");
-                            Log.w(TAG, "║   ✗ GUARDIAN NOT FOUND ✗              ║");
-                            Log.w(TAG, "╚═══════════════════════════════════════╝");
-                            Log.w(TAG, "No guardian with email: " + guardianEmail);
-
                             Toast.makeText(PatientSignupActivity.this,
                                     "Guardian not found. Creating account without guardian link.",
                                     Toast.LENGTH_LONG).show();
-
-                            // Create patient without guardian
                             createPatientAccount(patientEmailToCreate, password, null);
                         }
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
-                        Log.e(TAG, "Database error during guardian search: " + error.getMessage());
-                        Toast.makeText(PatientSignupActivity.this,
-                                "Error searching for guardian. Creating account without link.",
-                                Toast.LENGTH_LONG).show();
-
                         createPatientAccount(patientEmailToCreate, password, null);
                     }
                 });
     }
 
     private void createPatientAccount(String email, String password, String guardianUid) {
-        Log.d(TAG, "Creating Firebase Auth account for patient...");
-
         firebaseAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                     @Override
@@ -200,13 +171,9 @@ public class PatientSignupActivity extends AppCompatActivity {
                             FirebaseUser currentUser = firebaseAuth.getCurrentUser();
                             if (currentUser != null) {
                                 newPatientUid = currentUser.getUid();
-                                Log.d(TAG, "✓ Patient auth account created: " + newPatientUid);
-
-                                // Save patient data with or without guardian link
                                 savePatientAndLinkGuardian(email, newPatientUid, guardianUid);
                             }
                         } else {
-                            Log.e(TAG, "✗ Failed to create patient auth account");
                             Toast.makeText(getApplicationContext(),
                                     "Sign up failed: " + task.getException().getMessage(),
                                     Toast.LENGTH_LONG).show();
@@ -216,17 +183,8 @@ public class PatientSignupActivity extends AppCompatActivity {
     }
 
     private void savePatientAndLinkGuardian(String email, String patientUid, String guardianUid) {
-        Log.d(TAG, "╔═══════════════════════════════════════╗");
-        Log.d(TAG, "║  SAVING PATIENT & LINKING GUARDIAN     ║");
-        Log.d(TAG, "╚═══════════════════════════════════════╝");
-        Log.d(TAG, "Patient UID: " + patientUid);
-        Log.d(TAG, "Patient Email: " + email);
-        Log.d(TAG, "Guardian UID: " + (guardianUid != null ? guardianUid : "NONE"));
-
-        // Get guardian email from the EditText to save it
         String guardianEmail = editTextGuardianEmail.getText().toString().trim();
 
-        // Save patient data
         DatabaseReference patientRef = mDatabase.child("Patient").child(patientUid);
 
         Map<String, Object> patientInfo = new HashMap<>();
@@ -248,18 +206,13 @@ public class PatientSignupActivity extends AppCompatActivity {
 
         patientRef.setValue(patientInfo)
                 .addOnSuccessListener(aVoid -> {
-                    Log.d(TAG, "✓✓✓ PATIENT DATA SAVED ✓✓✓");
-
-                    // If guardian exists, update guardian's record
                     if (guardianUid != null && !guardianUid.isEmpty()) {
                         updateGuardianWithPatientInfo(guardianUid, patientUid, email);
                     } else {
-                        // No guardian, proceed to setup
                         savePreferencesAndContinue(patientUid, null);
                     }
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "✗✗✗ FAILED TO SAVE PATIENT ✗✗✗", e);
                     Toast.makeText(PatientSignupActivity.this,
                             "Failed to save patient data: " + e.getMessage(),
                             Toast.LENGTH_LONG).show();
@@ -267,13 +220,6 @@ public class PatientSignupActivity extends AppCompatActivity {
     }
 
     private void updateGuardianWithPatientInfo(String guardianUid, String patientUid, String patientEmail) {
-        Log.d(TAG, "╔═══════════════════════════════════════╗");
-        Log.d(TAG, "║  UPDATING GUARDIAN WITH PATIENT INFO   ║");
-        Log.d(TAG, "╚═══════════════════════════════════════╝");
-        Log.d(TAG, "Guardian UID: " + guardianUid);
-        Log.d(TAG, "Patient UID: " + patientUid);
-        Log.d(TAG, "Patient Email: " + patientEmail);
-
         DatabaseReference guardianRef = mDatabase.child("Guardian").child(guardianUid);
 
         Map<String, Object> guardianUpdates = new HashMap<>();
@@ -282,30 +228,12 @@ public class PatientSignupActivity extends AppCompatActivity {
 
         guardianRef.updateChildren(guardianUpdates)
                 .addOnSuccessListener(aVoid -> {
-                    Log.d(TAG, "╔═══════════════════════════════════════╗");
-                    Log.d(TAG, "║  ✓✓✓ GUARDIAN UPDATED ✓✓✓             ║");
-                    Log.d(TAG, "╚═══════════════════════════════════════╝");
-                    Log.d(TAG, "Guardian/" + guardianUid + "/patient-uid = " + patientUid);
-                    Log.d(TAG, "Guardian/" + guardianUid + "/patient-email = " + patientEmail);
-
                     Toast.makeText(PatientSignupActivity.this,
                             "Successfully linked to guardian!",
                             Toast.LENGTH_LONG).show();
-
-                    // Continue to setup
                     savePreferencesAndContinue(patientUid, guardianUid);
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "╔═══════════════════════════════════════╗");
-                    Log.e(TAG, "║  ✗✗✗ GUARDIAN UPDATE FAILED ✗✗✗       ║");
-                    Log.e(TAG, "╚═══════════════════════════════════════╝");
-                    Log.e(TAG, "Error: " + e.getMessage(), e);
-
-                    Toast.makeText(PatientSignupActivity.this,
-                            "Patient created but guardian link failed: " + e.getMessage(),
-                            Toast.LENGTH_LONG).show();
-
-                    // Continue anyway - patient is created
                     savePreferencesAndContinue(patientUid, guardianUid);
                 });
     }
@@ -379,8 +307,7 @@ public class PatientSignupActivity extends AppCompatActivity {
     }
 
     /**
-     * UPDATED: Initialize both clustering and video services
-     * Now includes automatic cleanup on signup
+     * CRITICAL FIX: Start clustering FIRST, then wait for completion before starting videos
      */
     private void startSetupProcess() {
         Toast.makeText(this, "Setting up your account...", Toast.LENGTH_SHORT).show();
@@ -388,53 +315,81 @@ public class PatientSignupActivity extends AppCompatActivity {
         Log.d(TAG, "╔═══════════════════════════════════════╗");
         Log.d(TAG, "║  STARTING SETUP PROCESS               ║");
         Log.d(TAG, "╚═══════════════════════════════════════╝");
-        Log.d(TAG, "Patient UID: " + newPatientUid);
 
-        // Initialize photo clustering service
-        Log.d(TAG, "▶️ Initializing photo clustering...");
-        autoClusteringService.initializeForPatient(newPatientUid);
-
-        // Initialize automatic video service with signup flag
-        // This will:
-        // 1. Clean up any old/test videos (runs cleanup immediately)
-        // 2. Generate first video
-        // 3. Schedule daily video generation at midnight
-        // 4. Schedule daily cleanup at midnight
-        Log.d(TAG, "▶️ Initializing video service (with cleanup)...");
-        automaticVideoService.initializeForPatient(newPatientUid, true); // true = isSignup
-
-        // Mark setup as complete
         DatabaseReference patientRef = mDatabase.child("Patient").child(newPatientUid);
         patientRef.child("hasCompletedSetup").setValue(true);
 
-        Log.d(TAG, "✓ Setup services initialized");
-
-        showSetupProgressDialog();
-    }
-
-    private void showSetupProgressDialog() {
         AlertDialog progressDialog = new AlertDialog.Builder(this)
-                .setTitle("Creating Your First Memory Video")
-                .setMessage("We're organizing your photos and creating your first memory video. " +
-                        "This may take a few moments...\n\n" +
-                        "• Analyzing your photos\n" +
+                .setTitle("Organizing Your Photos")
+                .setMessage("Please wait while we organize your photos...\n\n" +
+                        "• Analyzing photo metadata\n" +
                         "• Grouping by location and time\n" +
-                        "• Generating your first video\n" +
-                        "• Setting up daily reminders")
+                        "• Preparing memory clusters\n\n" +
+                        "This may take 30-60 seconds.")
                 .setCancelable(false)
                 .create();
 
         progressDialog.show();
 
-        // Give time for services to initialize
-        new android.os.Handler().postDelayed(() -> {
-            progressDialog.dismiss();
-            Toast.makeText(this,
-                    "Setup complete! Your first memory video is being created.\n" +
-                            "New videos will be generated daily at midnight.",
-                    Toast.LENGTH_LONG).show();
-            navigateToMainActivity();
-        }, 4000); // Increased to 4 seconds to account for cleanup
+        // STEP 1: Start clustering WITH callback
+        Log.d(TAG, "▶️ Step 1: Starting photo clustering...");
+
+        PhotoProcessingService processingService = new PhotoProcessingService(this, newPatientUid);
+        processingService.processAllPhotos(new PhotoProcessingService.ProcessingCallback() {
+            @Override
+            public void onProcessingStarted() {
+                Log.d(TAG, "✓ Photo clustering started");
+            }
+
+            @Override
+            public void onProgressUpdate(int processed, int total) {
+                runOnUiThread(() -> {
+                    progressDialog.setMessage("Organizing photos: " + processed + "/" + total + "\n\n" +
+                            "Please wait...");
+                });
+            }
+
+            @Override
+            public void onProcessingComplete(List<PhotoClusteringManager.PhotoCluster> clusters) {
+                Log.d(TAG, "╔═══════════════════════════════════════╗");
+                Log.d(TAG, "✓✓✓ CLUSTERING COMPLETE ✓✓✓");
+                Log.d(TAG, "Created " + (clusters != null ? clusters.size() : 0) + " clusters");
+                Log.d(TAG, "╚═══════════════════════════════════════╝");
+
+                // STEP 2: NOW start video generation (clusters exist!)
+                runOnUiThread(() -> {
+                    progressDialog.setMessage("Photos organized!\n\n" +
+                            "Now creating your first memory videos...\n\n" +
+                            "This will take another 30-60 seconds.");
+                });
+
+                Log.d(TAG, "▶️ Step 2: Starting video generation (clusters ready!)...");
+                automaticVideoService.initializeForPatient(newPatientUid, true);
+
+                // Wait a bit then navigate
+                new android.os.Handler().postDelayed(() -> {
+                    runOnUiThread(() -> {
+                        progressDialog.dismiss();
+                        Toast.makeText(PatientSignupActivity.this,
+                                "Setup complete! Your memory videos are being created in the background.",
+                                Toast.LENGTH_LONG).show();
+                        navigateToMainActivity();
+                    });
+                }, 5000); // 5 seconds to let video generation start
+            }
+
+            @Override
+            public void onProcessingError(String error) {
+                Log.e(TAG, "❌ Clustering failed: " + error);
+                runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    Toast.makeText(PatientSignupActivity.this,
+                            "Setup complete! You may need to add photos with location data.",
+                            Toast.LENGTH_LONG).show();
+                    navigateToMainActivity();
+                });
+            }
+        });
     }
 
     private void navigateToMainActivity() {
@@ -448,7 +403,5 @@ public class PatientSignupActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Note: Don't stop services here as they need to run in background
-        // Services will manage their own lifecycle
     }
 }
