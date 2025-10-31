@@ -380,9 +380,9 @@ RecallLive/
 
 ## 👥 Credits
 
-- **Developer:** [Your Name]
-- **School:** [Your School]
-- **Congressional District:** [Your District]
+- **Developer:** Hojin Shin
+- **School:** HSE High School
+- **Congressional District:** Indiana's 5th congressional district
 - **Submission:** Congressional App Challenge 2025
 
 ### Third-Party Libraries
