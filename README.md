@@ -1,6 +1,6 @@
 # RecallLive - Memory Preservation App for Alzheimer's Patients
 
-**Congressional App Challenge 2024 Submission**
+**Congressional App Challenge 2025 Submission**
 
 ## 📱 About RecallLive
 
@@ -383,7 +383,7 @@ RecallLive/
 - **Developer:** [Your Name]
 - **School:** [Your School]
 - **Congressional District:** [Your District]
-- **Submission:** Congressional App Challenge 2024
+- **Submission:** Congressional App Challenge 2025
 
 ### Third-Party Libraries
 - Firebase SDK
@@ -395,7 +395,7 @@ RecallLive/
 
 ## 📄 License
 
-This project is submitted for the Congressional App Challenge 2024.
+This project is submitted for the Congressional App Challenge 2025.
 
 ---
 
