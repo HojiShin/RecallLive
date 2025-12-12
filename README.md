@@ -1,7 +1,5 @@
 # RecallLive - Memory Preservation App for Alzheimer's Patients
 
-**Congressional App Challenge 2025 Submission**
-
 ## 📱 About RecallLive
 
 RecallLive is an Android application designed to help Alzheimer's patients preserve memories and maintain connections with loved ones through automated daily memory videos, AI-powered photo organization, and real-time emotion tracking.
