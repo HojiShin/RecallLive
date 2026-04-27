@@ -32,9 +32,6 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 
-/**
- * FIXED: Automatic Video Service with proper signup vs login handling
- */
 public class AutomaticVideoService {
     private static final String TAG = "AutomaticVideoService";
     private static final String PREFS_NAME = "RecallLiveVideoPrefs";

@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -55,6 +56,7 @@ public class GuardianHomeFragment extends Fragment {
     private TextView tvExplanation;
     private FrameLayout graphContainer;
     private TextView tvPlaceholder;
+    private Button btnAiChat; // NEW
 
     private String linkedPatientUid;
     private List<VideoEmotionData> videoEmotionList;
@@ -98,6 +100,10 @@ public class GuardianHomeFragment extends Fragment {
         tvExplanation = view.findViewById(R.id.tv_explanation);
         graphContainer = view.findViewById(R.id.graph_container);
         tvPlaceholder = view.findViewById(R.id.tv_quiz_placeholder);
+        btnAiChat = view.findViewById(R.id.btn_ai_chat); // NEW
+
+        // Setup AI Chat button - NEW
+        btnAiChat.setOnClickListener(v -> openAiChat());
 
         // Setup video list
         setupVideoRecyclerView();
@@ -115,6 +121,30 @@ public class GuardianHomeFragment extends Fragment {
         }
 
         return view;
+    }
+
+    // NEW METHOD
+    private void openAiChat() {
+        Log.d(TAG, "Opening AI Chat interface");
+
+        if (linkedPatientUid == null || linkedPatientUid.isEmpty()) {
+            Toast.makeText(getContext(), "No patient linked", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            GuardianChatFragment chatFragment = GuardianChatFragment.newInstance(linkedPatientUid);
+
+            getParentFragmentManager().beginTransaction()
+                    .replace(R.id.container, chatFragment)
+                    .addToBackStack("ai_chat")
+                    .commit();
+
+            Log.d(TAG, "✓ AI Chat fragment opened");
+        } catch (Exception e) {
+            Log.e(TAG, "✗ Error opening AI chat", e);
+            Toast.makeText(getContext(), "Error opening chat: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
     }
 
     private void setupVideoRecyclerView() {
@@ -432,9 +462,9 @@ public class GuardianHomeFragment extends Fragment {
     }
 
     private void onVideoClick(VideoEmotionData video) {
-        Log.d(TAG, "══════════════════════════════════════");
+        Log.d(TAG, "╔════════════════════════════════════╗");
         Log.d(TAG, "VIDEO CLICK - Opening Guardian Viewer");
-        Log.d(TAG, "══════════════════════════════════════");
+        Log.d(TAG, "╚════════════════════════════════════╝");
         Log.d(TAG, "Video URL: " + video.videoUrl);
         Log.d(TAG, "Document ID: " + video.documentId);
         Log.d(TAG, "Title: " + video.title);
@@ -442,24 +472,24 @@ public class GuardianHomeFragment extends Fragment {
         Log.d(TAG, "Time: " + video.timeDescription);
         Log.d(TAG, "Photo Count: " + video.photoCount);
         Log.d(TAG, "Patient UID: " + linkedPatientUid);
-        Log.d(TAG, "══════════════════════════════════════");
+        Log.d(TAG, "╚════════════════════════════════════╝");
 
         // Validate data before opening fragment
         if (video.videoUrl == null || video.videoUrl.isEmpty()) {
             Toast.makeText(getContext(), "Video URL not available", Toast.LENGTH_SHORT).show();
-            Log.e(TAG, "❌ Cannot open video - URL is null or empty");
+            Log.e(TAG, "✗ Cannot open video - URL is null or empty");
             return;
         }
 
         if (video.documentId == null || video.documentId.isEmpty()) {
             Toast.makeText(getContext(), "Video ID not available", Toast.LENGTH_SHORT).show();
-            Log.e(TAG, "❌ Cannot open video - Document ID is null or empty");
+            Log.e(TAG, "✗ Cannot open video - Document ID is null or empty");
             return;
         }
 
         if (linkedPatientUid == null || linkedPatientUid.isEmpty()) {
             Toast.makeText(getContext(), "Patient not linked", Toast.LENGTH_SHORT).show();
-            Log.e(TAG, "❌ Cannot open video - Patient UID is null or empty");
+            Log.e(TAG, "✗ Cannot open video - Patient UID is null or empty");
             return;
         }
 
@@ -482,7 +512,7 @@ public class GuardianHomeFragment extends Fragment {
 
             Log.d(TAG, "✅ Successfully opened GuardianVideoViewerFragment");
         } catch (Exception e) {
-            Log.e(TAG, "❌ Error opening video viewer", e);
+            Log.e(TAG, "✗ Error opening video viewer", e);
             Toast.makeText(getContext(), "Error opening video: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
