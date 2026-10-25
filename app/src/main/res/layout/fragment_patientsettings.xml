@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1E1E1E"
+    android:background="#FAF7F2"
     tools:context=".PatientSettingsFragment">
 
     <!-- ScrollView for Settings Content -->
@@ -28,7 +28,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 android:layout_marginStart="24dp"
                 android:layout_marginTop="16dp"
-                app:tint="#FFFFFF" />
+                app:tint="#1C1917" />
 
             <TextView
                 android:id="@+id/tvHistory"
@@ -36,7 +36,7 @@
                 android:layout_height="wrap_content"
                 android:text="History"
                 android:textSize="18sp"
-                android:textColor="#FFFFFF"
+                android:textColor="#1C1917"
                 app:layout_constraintTop_toTopOf="@id/ivHistory"
                 app:layout_constraintBottom_toBottomOf="@id/ivHistory"
                 app:layout_constraintStart_toEndOf="@id/ivHistory"
@@ -50,7 +50,7 @@
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:src="@drawable/ic_help"
-                android:tint="#FFFFFF"
+                android:tint="#1C1917"
                 app:layout_constraintTop_toBottomOf="@id/ivHistory"
                 app:layout_constraintStart_toStartOf="parent"
                 android:layout_marginStart="24dp"
@@ -62,7 +62,7 @@
                 android:layout_height="wrap_content"
                 android:text="Help"
                 android:textSize="18sp"
-                android:textColor="#FFFFFF"
+                android:textColor="#1C1917"
                 app:layout_constraintTop_toTopOf="@id/ivHelp"
                 app:layout_constraintBottom_toBottomOf="@id/ivHelp"
                 app:layout_constraintStart_toEndOf="@id/ivHelp"
@@ -80,7 +80,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 android:layout_marginStart="24dp"
                 android:layout_marginTop="32dp"
-                app:tint="#FFFFFF" />
+                app:tint="#1C1917" />
 
             <TextView
                 android:id="@+id/tvFeedback"
@@ -88,7 +88,7 @@
                 android:layout_height="wrap_content"
                 android:text="Send feedback"
                 android:textSize="18sp"
-                android:textColor="#FFFFFF"
+                android:textColor="#1C1917"
                 app:layout_constraintTop_toTopOf="@id/ivFeedback"
                 app:layout_constraintBottom_toBottomOf="@id/ivFeedback"
                 app:layout_constraintStart_toEndOf="@id/ivFeedback"
@@ -106,7 +106,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 android:layout_marginStart="24dp"
                 android:layout_marginTop="32dp"
-                app:tint="#FFFFFF" />
+                app:tint="#1C1917" />
 
             <TextView
                 android:id="@+id/tvRemindTime"
@@ -114,7 +114,7 @@
                 android:layout_height="wrap_content"
                 android:text="Set remind time"
                 android:textSize="18sp"
-                android:textColor="#FFFFFF"
+                android:textColor="#1C1917"
                 app:layout_constraintTop_toTopOf="@id/ivRemindTime"
                 app:layout_constraintBottom_toBottomOf="@id/ivRemindTime"
                 app:layout_constraintStart_toEndOf="@id/ivRemindTime"
@@ -132,7 +132,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 android:layout_marginStart="24dp"
                 android:layout_marginTop="32dp"
-                app:tint="#FFFFFF" />
+                app:tint="#1C1917" />
 
             <TextView
                 android:id="@+id/tvAccountInfo"
@@ -140,7 +140,7 @@
                 android:layout_height="wrap_content"
                 android:text="Account info"
                 android:textSize="18sp"
-                android:textColor="#FFFFFF"
+                android:textColor="#1C1917"
                 app:layout_constraintTop_toTopOf="@id/ivAccountInfo"
                 app:layout_constraintBottom_toBottomOf="@id/ivAccountInfo"
                 app:layout_constraintStart_toEndOf="@id/ivAccountInfo"
@@ -158,7 +158,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 android:layout_marginStart="24dp"
                 android:layout_marginTop="32dp"
-                app:tint="#FFFFFF" />
+                app:tint="#1C1917" />
 
             <TextView
                 android:id="@+id/tvLogout"
@@ -166,7 +166,7 @@
                 android:layout_height="wrap_content"
                 android:text="Log out"
                 android:textSize="18sp"
-                android:textColor="#FFFFFF"
+                android:textColor="#1C1917"
                 app:layout_constraintTop_toTopOf="@id/ivLogout"
                 app:layout_constraintBottom_toBottomOf="@id/ivLogout"
                 app:layout_constraintStart_toEndOf="@id/ivLogout"
@@ -181,7 +181,7 @@
                 android:layout_height="wrap_content"
                 android:text="v x.xx.xx"
                 android:textSize="14sp"
-                android:textColor="#808080"
+                android:textColor="#78716C"
                 app:layout_constraintTop_toBottomOf="@id/ivLogout"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"

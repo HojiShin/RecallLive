@@ -1,15 +1,16 @@
 {
   "project_info": {
     "project_number": "89167840048",
+    "firebase_url": "https://recalllive-default-rtdb.firebaseio.com",
     "project_id": "recalllive",
     "storage_bucket": "recalllive.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:89167840048:android:d0c7fc953467a58a49bef5",
+        "mobilesdk_app_id": "1:89167840048:android:5d7b4cb1ea7aecc549bef5",
         "android_client_info": {
-          "package_name": "com.example.myapplication"
+          "package_name": "com.example.recalllive"
         }
       },
       "oauth_client": [],
@@ -26,9 +27,9 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:89167840048:android:5d7b4cb1ea7aecc549bef5",
+        "mobilesdk_app_id": "1:89167840048:android:cac0c6fa32fd129d49bef5",
         "android_client_info": {
-          "package_name": "com.example.recalllive"
+          "package_name": "com.hojinshin.recalllive"
         }
       },
       "oauth_client": [],

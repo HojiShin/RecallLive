@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1E1E1E">
+    android:background="#FAF7F2">
 
     <!-- Header -->
     <TextView
@@ -12,9 +12,9 @@
         android:text="Patient's Memory Videos"
         android:textSize="24sp"
         android:textStyle="bold"
-        android:textColor="#FFFFFF"
+        android:textColor="#1C1917"
         android:padding="16dp"
-        android:background="#2A2A2A"
+        android:background="#FFFFFF"
         android:elevation="8dp"/>
 
     <!-- Progress Bar -->
@@ -23,7 +23,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"
-        android:indeterminateTint="#6C9EFF"
+        android:indeterminateTint="#0F766E"
         android:visibility="gone"/>
 
     <!-- Empty State -->
@@ -34,7 +34,7 @@
         android:layout_centerInParent="true"
         android:text="No videos available"
         android:textSize="16sp"
-        android:textColor="#B0B0B0"
+        android:textColor="#57534E"
         android:gravity="center"
         android:padding="32dp"
         android:visibility="gone"/>

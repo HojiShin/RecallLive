@@ -4,14 +4,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1E1E1E">
+    android:background="#FAF7F2">
 
     <!-- Header -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/top_app_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#2A2A2A"
+        android:background="#FFFFFF"
         android:padding="16dp"
         android:elevation="8dp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -24,7 +24,7 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_arrow_back"
-            android:tint="#FFFFFF"
+            android:tint="#1C1917"
             android:contentDescription="Back"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -36,7 +36,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Help"
-            android:textColor="#FFFFFF"
+            android:textColor="#1C1917"
             android:textSize="20sp"
             android:textStyle="bold"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -70,7 +70,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Frequently Asked Questions"
-                android:textColor="#FFFFFF"
+                android:textColor="#1C1917"
                 android:textSize="20sp"
                 android:textStyle="bold"
                 android:layout_marginBottom="16dp" />
@@ -82,7 +82,7 @@
                 android:layout_marginBottom="12dp"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="4dp"
-                app:cardBackgroundColor="#2D2D2D">
+                app:cardBackgroundColor="#FFFFFF">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -94,7 +94,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Q: How do I watch my memory videos?"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#1C1917"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:layout_marginBottom="8dp" />
@@ -103,7 +103,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="A: Your memory videos are automatically created daily and appear on the Home screen. Simply tap any video to watch it. New videos are generated every day at midnight."
-                        android:textColor="#B0B0B0"
+                        android:textColor="#57534E"
                         android:textSize="14sp"
                         android:lineSpacingExtra="4dp" />
 
@@ -118,7 +118,7 @@
                 android:layout_marginBottom="12dp"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="4dp"
-                app:cardBackgroundColor="#2D2D2D">
+                app:cardBackgroundColor="#FFFFFF">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -130,7 +130,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Q: What is the Quiz feature?"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#1C1917"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:layout_marginBottom="8dp" />
@@ -139,7 +139,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="A: The Quiz helps test your memory by showing photos and asking you to identify locations. It's a fun way to exercise your memory and recognize familiar places from your photos."
-                        android:textColor="#B0B0B0"
+                        android:textColor="#57534E"
                         android:textSize="14sp"
                         android:lineSpacingExtra="4dp" />
 
@@ -154,7 +154,7 @@
                 android:layout_marginBottom="12dp"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="4dp"
-                app:cardBackgroundColor="#2D2D2D">
+                app:cardBackgroundColor="#FFFFFF">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -166,7 +166,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Q: How often are new videos created?"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#1C1917"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:layout_marginBottom="8dp" />
@@ -175,7 +175,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="A: New memory videos are automatically created every day at midnight. Up to 10 videos can be generated per day. Videos from previous days are automatically replaced with fresh content."
-                        android:textColor="#B0B0B0"
+                        android:textColor="#57534E"
                         android:textSize="14sp"
                         android:lineSpacingExtra="4dp" />
 
@@ -190,7 +190,7 @@
                 android:layout_marginBottom="12dp"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="4dp"
-                app:cardBackgroundColor="#2D2D2D">
+                app:cardBackgroundColor="#FFFFFF">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -202,7 +202,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Q: Where can I see my watch history?"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#1C1917"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:layout_marginBottom="8dp" />
@@ -211,7 +211,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="A: Go to Settings and tap 'History' to see all the videos you've watched. Videos are organized by date (Today, Yesterday, Older) so you can easily find and rewatch your favorite memories."
-                        android:textColor="#B0B0B0"
+                        android:textColor="#57534E"
                         android:textSize="14sp"
                         android:lineSpacingExtra="4dp" />
 
@@ -226,7 +226,7 @@
                 android:layout_marginBottom="12dp"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="4dp"
-                app:cardBackgroundColor="#2D2D2D">
+                app:cardBackgroundColor="#FFFFFF">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -238,7 +238,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Q: What photos does RecallLive use?"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#1C1917"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:layout_marginBottom="8dp" />
@@ -247,7 +247,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="A: RecallLive uses photos from your device's gallery. Photos are automatically organized by location and time. For best results, take photos with location services enabled so the app can identify where memories were made."
-                        android:textColor="#B0B0B0"
+                        android:textColor="#57534E"
                         android:textSize="14sp"
                         android:lineSpacingExtra="4dp" />
 
@@ -262,7 +262,7 @@
                 android:layout_marginBottom="12dp"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="4dp"
-                app:cardBackgroundColor="#2D2D2D">
+                app:cardBackgroundColor="#FFFFFF">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -274,7 +274,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Q: How do I set up reminders?"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#1C1917"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:layout_marginBottom="8dp" />
@@ -283,7 +283,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="A: Go to Settings → Set Remind Time to choose when you'd like to receive daily notifications about new memory videos. You can customize the reminder time to fit your schedule."
-                        android:textColor="#B0B0B0"
+                        android:textColor="#57534E"
                         android:textSize="14sp"
                         android:lineSpacingExtra="4dp" />
 
@@ -298,7 +298,7 @@
                 android:layout_marginBottom="24dp"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="4dp"
-                app:cardBackgroundColor="#2D2D2D">
+                app:cardBackgroundColor="#FFFFFF">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -310,7 +310,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Q: What is the Guardian account for?"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#1C1917"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:layout_marginBottom="8dp" />
@@ -319,7 +319,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="A: Guardian accounts allow family members or caregivers to monitor emotional responses during video watching. Guardians can see which videos were watched and view facial expression data to better understand the patient's engagement and emotional state."
-                        android:textColor="#B0B0B0"
+                        android:textColor="#57534E"
                         android:textSize="14sp"
                         android:lineSpacingExtra="4dp" />
 

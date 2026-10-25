@@ -4,14 +4,14 @@
     android:layout_width="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_height="match_parent"
-    android:background="#1E1E1E">
+    android:background="#FAF7F2">
 
     <!-- Toolbar with custom layout -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="#2A2A2A"
+        android:background="#FFFFFF"
         android:elevation="8dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -29,7 +29,7 @@
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:src="@drawable/brain"
-                android:tint="#FFFFFF"
+                android:tint="#1C1917"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
@@ -40,7 +40,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
                 android:text="Recall"
-                android:textColor="#FFFFFF"
+                android:textColor="#1C1917"
                 android:textSize="22sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.02"
@@ -53,7 +53,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Live"
-                android:textColor="#FF0000"
+                android:textColor="#0F766E"
                 android:textSize="22sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.02"
@@ -69,7 +69,7 @@
         android:id="@+id/bottom_navigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#2A2A2A"
+        android:background="#FFFFFF"
         android:elevation="8dp"
         app:itemIconTint="@color/bottom_nav_color"
         app:itemTextColor="@color/bottom_nav_color"

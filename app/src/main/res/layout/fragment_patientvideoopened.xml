@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/black">
+    android:background="#FAF7F2">
 
     <!-- Video View - Fixed to stay above bottom navigation -->
     <VideoView
@@ -22,7 +22,7 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_margin="16dp"
-        android:background="#80000000"
+        android:background="#0F766E"
         android:contentDescription="Close video"
         android:padding="12dp"
         android:src="@android:drawable/ic_menu_close_clear_cancel"
@@ -35,7 +35,7 @@
         android:id="@+id/subtitle_container"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="#CC000000"
+        android:background="#FFFFFF"
         android:padding="16dp"
         android:minHeight="100dp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -48,7 +48,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:text="Memory Video"
-            android:textColor="#FFFFFF"
+            android:textColor="#1C1917"
             android:textSize="20sp"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
@@ -62,7 +62,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="Location: Unknown\nTime: Unknown\nPhotos: 0"
-            android:textColor="#B0B0B0"
+            android:textColor="#57534E"
             android:textSize="14sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"

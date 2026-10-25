@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1E1E1E"
+    android:background="#FAF7F2"
     android:padding="16dp">
 
     <!-- Back Button -->
@@ -13,7 +13,7 @@
         android:layout_height="48dp"
         android:padding="12dp"
         android:src="@android:drawable/ic_menu_close_clear_cancel"
-        android:tint="#FFFFFF"
+        android:tint="#1C1917"
         android:contentDescription="Back"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -26,7 +26,7 @@
         android:text="Set Daily Reminder"
         android:textSize="24sp"
         android:textStyle="bold"
-        android:textColor="#FFFFFF"
+        android:textColor="#1C1917"
         android:gravity="center"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/iv_back"
@@ -41,7 +41,7 @@
         android:layout_marginTop="32dp"
         android:text="Choose a time to be reminded to watch your daily memory videos"
         android:textSize="16sp"
-        android:textColor="#B0B0B0"
+        android:textColor="#57534E"
         android:gravity="center"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -55,7 +55,7 @@
         android:layout_marginTop="32dp"
         app:cardCornerRadius="16dp"
         app:cardElevation="4dp"
-        app:cardBackgroundColor="#2D2D2D"
+        app:cardBackgroundColor="#FFFFFF"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_description">
@@ -86,7 +86,7 @@
                     android:text="09"
                     android:textSize="64sp"
                     android:textStyle="bold"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#1C1917"
                     android:minWidth="100dp"
                     android:gravity="center" />
 
@@ -97,7 +97,7 @@
                     android:text=":"
                     android:textSize="64sp"
                     android:textStyle="bold"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#1C1917"
                     android:layout_marginHorizontal="4dp" />
 
                 <!-- Minute -->
@@ -108,7 +108,7 @@
                     android:text="00"
                     android:textSize="64sp"
                     android:textStyle="bold"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#1C1917"
                     android:minWidth="100dp"
                     android:gravity="center" />
 
@@ -131,7 +131,7 @@
                     android:textStyle="bold"
                     android:textColor="#FFFFFF"
                     android:gravity="center"
-                    android:background="#6C9EFF"
+                    android:background="#0F766E"
                     android:clickable="true"
                     android:focusable="true" />
 
@@ -142,9 +142,9 @@
                     android:layout_marginStart="16dp"
                     android:text="PM"
                     android:textSize="20sp"
-                    android:textColor="#808080"
+                    android:textColor="#78716C"
                     android:gravity="center"
-                    android:background="#3A3A3A"
+                    android:background="#E7E2DA"
                     android:clickable="true"
                     android:focusable="true" />
 
@@ -162,7 +162,7 @@
         android:layout_marginTop="16dp"
         android:text="Currently: Not set"
         android:textSize="14sp"
-        android:textColor="#B0B0B0"
+        android:textColor="#57534E"
         android:gravity="center"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -187,7 +187,7 @@
             android:text="Cancel"
             android:textSize="16sp"
             android:textColor="#FFFFFF"
-            android:backgroundTint="#3A3A3A" />
+            android:backgroundTint="#0F766E" />
 
         <Space
             android:layout_width="16dp"
@@ -201,7 +201,7 @@
             android:text="Save Reminder"
             android:textSize="16sp"
             android:textColor="#FFFFFF"
-            android:backgroundTint="#FF4757" />
+            android:backgroundTint="#0F766E" />
 
     </LinearLayout>
 

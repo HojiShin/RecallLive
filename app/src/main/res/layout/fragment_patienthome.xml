@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1E1E1E"
+    android:background="#FAF7F2"
     tools:context=".PatientHomeFragment">
 
     <!-- Empty State TextView -->
@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:text="Your daily memory videos will appear here.\n\nNew videos are automatically created every day!"
         android:textAlignment="center"
-        android:textColor="#B0B0B0"
+        android:textColor="#57534E"
         android:textSize="16sp"
         android:lineSpacingExtra="4dp"
         android:visibility="gone"
@@ -40,7 +40,7 @@
         android:id="@+id/progress_bar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:indeterminateTint="#6C9EFF"
+        android:indeterminateTint="#0F766E"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

@@ -5,21 +5,21 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="32dp"
-    android:background="#1E1E1E"
+    android:background="#FAF7F2"
     tools:context=".LoginActivity">
 
     <!-- App Title with Brain Icon -->
-<!--    <ImageView-->
-<!--        android:id="@+id/iv_app_logo"-->
-<!--        android:layout_width="50dp"-->
-<!--        android:layout_height="50dp"-->
-<!--        android:layout_marginTop="80dp"-->
-<!--        android:layout_marginEnd="12dp"-->
-<!--        android:src="@drawable/ic_brain"-->
-<!--        android:contentDescription="Brain Logo"-->
-<!--        app:layout_constraintEnd_toStartOf="@id/ll_app_title"-->
-<!--        app:layout_constraintTop_toTopOf="parent"-->
-        app:layout_constraintBottom_toBottomOf="@id/ll_app_title"
+    <!--    <ImageView-->
+    <!--        android:id="@+id/iv_app_logo"-->
+    <!--        android:layout_width="50dp"-->
+    <!--        android:layout_height="50dp"-->
+    <!--        android:layout_marginTop="80dp"-->
+    <!--        android:layout_marginEnd="12dp"-->
+    <!--        android:src="@drawable/ic_brain"-->
+    <!--        android:contentDescription="Brain Logo"-->
+    <!--        app:layout_constraintEnd_toStartOf="@id/ll_app_title"-->
+    <!--        app:layout_constraintTop_toTopOf="parent"-->
+    app:layout_constraintBottom_toBottomOf="@id/ll_app_title"
 
     <!-- App Title Container -->
     <LinearLayout
@@ -36,7 +36,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Recall"
-            android:textColor="#FFFFFF"
+            android:textColor="#1C1917"
             android:textSize="36sp"
             android:textStyle="bold"
             android:letterSpacing="0.02" />
@@ -45,7 +45,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Live"
-            android:textColor="#FF0000"
+            android:textColor="#0F766E"
             android:textSize="36sp"
             android:textStyle="bold"
             android:letterSpacing="0.02" />
@@ -58,7 +58,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="Sign in to continue"
-        android:textColor="#B0B0B0"
+        android:textColor="#57534E"
         android:textSize="16sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -71,7 +71,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="60dp"
         android:text="Email/Phone number"
-        android:textColor="#FFFFFF"
+        android:textColor="#1C1917"
         android:textSize="14sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -84,10 +84,10 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:background="#2A2A2A"
+        android:background="#FFFFFF"
         android:hint="Enter your email or phone"
-        android:textColorHint="#707070"
-        android:textColor="#FFFFFF"
+        android:textColorHint="#78716C"
+        android:textColor="#1C1917"
         android:inputType="textEmailAddress"
         android:padding="18dp"
         android:textSize="16sp"
@@ -102,7 +102,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:text="Password"
-        android:textColor="#FFFFFF"
+        android:textColor="#1C1917"
         android:textSize="14sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -115,10 +115,10 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:background="#2A2A2A"
+        android:background="#FFFFFF"
         android:hint="Enter your password"
-        android:textColorHint="#707070"
-        android:textColor="#FFFFFF"
+        android:textColorHint="#78716C"
+        android:textColor="#1C1917"
         android:inputType="textPassword"
         android:padding="18dp"
         android:textSize="16sp"
@@ -151,7 +151,7 @@
         android:layout_marginTop="16dp"
         android:background="@android:color/transparent"
         android:text="Don't have an account? Sign up"
-        android:textColor="#6C9EFF"
+        android:textColor="#0F766E"
         android:textSize="14sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"

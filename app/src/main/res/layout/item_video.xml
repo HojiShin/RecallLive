@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="8dp"
-    android:background="#2D2D2D"
+    android:background="#FFFFFF"
     android:elevation="4dp"
     android:padding="12dp">
 
@@ -24,7 +24,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:text="Video title, related to the person or location"
-        android:textColor="#FFFFFF"
+        android:textColor="#1C1917"
         android:textSize="16sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

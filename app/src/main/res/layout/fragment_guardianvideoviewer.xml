@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1E1E1E"
+    android:background="#FAF7F2"
     android:fillViewport="true">
 
     <LinearLayout
@@ -43,7 +43,7 @@
                 android:text="Memory Video"
                 android:textSize="24sp"
                 android:textStyle="bold"
-                android:textColor="#FFFFFF"
+                android:textColor="#1C1917"
                 android:paddingBottom="16dp"/>
 
             <!-- Emotion Summary Card -->
@@ -53,7 +53,7 @@
                 android:layout_marginBottom="16dp"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="4dp"
-                app:cardBackgroundColor="#2D2D2D">
+                app:cardBackgroundColor="#FFFFFF">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -67,7 +67,7 @@
                         android:text="Emotion Summary"
                         android:textSize="18sp"
                         android:textStyle="bold"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#1C1917"
                         android:paddingBottom="8dp"/>
 
                     <TextView
@@ -76,7 +76,7 @@
                         android:layout_height="wrap_content"
                         android:text="Loading emotion data..."
                         android:textSize="14sp"
-                        android:textColor="#B0B0B0"
+                        android:textColor="#57534E"
                         android:lineSpacingExtra="4dp"/>
 
                 </LinearLayout>
@@ -90,7 +90,7 @@
                 android:layout_marginBottom="16dp"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="4dp"
-                app:cardBackgroundColor="#2D2D2D">
+                app:cardBackgroundColor="#FFFFFF">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -103,16 +103,16 @@
                         android:layout_height="wrap_content"
                         android:text="Emotion Timeline"
                         android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:textColor="#FFFFFF"
-                    android:paddingBottom="8dp"/>
+                        android:textStyle="bold"
+                        android:textColor="#1C1917"
+                        android:paddingBottom="8dp"/>
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Shows emotions detected chronologically during video playback"
                         android:textSize="12sp"
-                        android:textColor="#808080"
+                        android:textColor="#78716C"
                         android:paddingBottom="12dp"/>
 
                     <!-- Loading View -->
@@ -121,7 +121,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center"
-                        android:indeterminateTint="#6C9EFF"
+                        android:indeterminateTint="#0F766E"
                         android:visibility="gone"/>
 
                     <!-- No Data View -->
@@ -129,9 +129,9 @@
                         android:id="@+id/no_data_view"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="No emotion data available\n\nðŸ'¡ Emotions are tracked when the patient watches videos"
+                        android:text="No emotion data available\n\n💡 Emotions are tracked when the patient watches videos"
                         android:textSize="14sp"
-                        android:textColor="#808080"
+                        android:textColor="#78716C"
                         android:gravity="center"
                         android:padding="24dp"
                         android:visibility="gone"/>

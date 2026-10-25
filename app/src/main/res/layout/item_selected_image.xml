@@ -10,7 +10,7 @@
         android:layout_height="100dp"
         app:cardCornerRadius="8dp"
         app:cardElevation="4dp"
-        app:cardBackgroundColor="#2D2D2D">
+        app:cardBackgroundColor="#FFFFFF">
 
         <ImageView
             android:id="@+id/imageViewThumbnail"
