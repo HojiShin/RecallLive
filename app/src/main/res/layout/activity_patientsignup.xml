@@ -46,7 +46,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Live"
-            android:textColor="#0F766E"
+            android:textColor="#B71C1C"
             android:textSize="28sp"
             android:textStyle="bold"
             android:letterSpacing="0.02" />
@@ -110,7 +110,7 @@
         android:id="@+id/tvEmailPhoneLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Email/Phone number"
+        android:text="Email"
         android:textSize="14sp"
         android:textStyle="bold"
         android:textColor="#1C1917"
